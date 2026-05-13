@@ -958,7 +958,7 @@ class BotGUI:
                 self.speak(text)
                 self.tts_active.clear() 
             else: time.sleep(0.05)
-
+    #change
     def speak(self, text):
         clean = re.sub(r"[^\w\s,.!?:-]", "", text)
         if not clean.strip(): return
@@ -975,48 +975,43 @@ class BotGUI:
             )
             
             self.current_audio_process.stdin.write(clean.encode() + b'\n')
-            self.current_audio_process.stdin.close() 
-
-            try:
-                device_info = sd.query_devices(kind='output')
-                native_rate = int(device_info['default_samplerate'])
-            except:
-                native_rate = 48000 
+            self.current_audio_process.stdin.close()
 
             PIPER_RATE = 22050
-            use_native_rate = False
-            
-            try:
-                sd.check_output_settings(device=None, samplerate=PIPER_RATE)
-            except:
-                use_native_rate = True
+            HARDWARE_RATE = 48000    # 你的声卡只支持这个采样率
 
-            with sd.RawOutputStream(samplerate=native_rate if use_native_rate else PIPER_RATE, 
-                                    channels=1, dtype='int16', 
-                                    device=None, latency='low', blocksize=2048) as stream:
+            # 输出到硬件设备 hw:2,0，48000 Hz 立体声; change it to mono
+            with sd.RawOutputStream(samplerate=HARDWARE_RATE, channels=2, dtype='int16',
+                                    device="hw:2,0", latency='low', blocksize=2048) as stream:
                 while True:
-                    if self.interrupted.is_set(): break
+                    if self.interrupted.is_set():
+                        break
                     data = self.current_audio_process.stdout.read(4096)
-                    if not data: break 
+                    if not data:
+                        break
                     
                     audio_chunk = np.frombuffer(data, dtype=np.int16)
                     if len(audio_chunk) > 0:
                         self.current_volume = np.max(np.abs(audio_chunk))
-                        if use_native_rate:
-                            num_samples = int(len(audio_chunk) * (native_rate / PIPER_RATE))
-                            audio_chunk = scipy.signal.resample(audio_chunk, num_samples).astype(np.int16)
-                        stream.write(audio_chunk.tobytes())
+                        # 重采样到 48000 Hz
+                        num_samples = int(len(audio_chunk) * (HARDWARE_RATE / PIPER_RATE))
+                        resampled = scipy.signal.resample(audio_chunk, num_samples).astype(np.int16)
+                        # 转换为立体声（左右声道相同）
+                        stereo = np.column_stack((resampled, resampled)).flatten()
+                        stream.write(stereo.tobytes())
                     else:
                         self.current_volume = 0
-                time.sleep(0.5) 
+                time.sleep(0.5)
                     
         except Exception as e:
             print(f"Audio Error: {e}")
         finally:
-            self.current_volume = 0 
+            self.current_volume = 0
             if self.current_audio_process:
-                if self.current_audio_process.stdout: self.current_audio_process.stdout.close()
-                if self.current_audio_process.poll() is None: self.current_audio_process.terminate()
+                if self.current_audio_process.stdout:
+                    self.current_audio_process.stdout.close()
+                if self.current_audio_process.poll() is None:
+                    self.current_audio_process.terminate()
                 self.current_audio_process = None
 
     def _run_thinking_sound_loop(self):
@@ -1056,7 +1051,7 @@ class BotGUI:
                 num_samples = int(len(audio) * (native_rate / file_sr))
                 audio = scipy.signal.resample(audio, num_samples).astype(np.int16)
 
-            sd.play(audio, playback_rate)
+            sd.play(audio, playback_rate, device="hw:2,0")
             sd.wait() 
         except: pass
 
