@@ -81,11 +81,19 @@ class BotGUI:
         self.recording_active = threading.Event() 
         self.interrupted = threading.Event() 
         
-        self.tts_queue = []          
-        self.tts_queue_lock = threading.Lock() 
-        self.tts_thread = None       
+        self.tts_queue = []
+        self.tts_queue_lock = threading.Lock()
         self.tts_active = threading.Event()
-        self.current_audio_process = None 
+        self.current_audio_process = None
+
+        # --- TTS 两级流水线：合成线程提前渲染，播放线程只管播，消除句间空挡 ---
+        self.audio_queue = []                    # 已渲染音频：(samples float32, rate)
+        self.audio_queue_lock = threading.Lock()
+        self.audio_queue_max = 2                 # 提前渲染深度（背压上限）
+        self.synth_active = threading.Event()    # 合成线程正在合成某句
+        self.play_active = threading.Event()     # 播放线程正在播某句
+        self.synth_thread = None
+        self.play_thread = None
         self.exiting = False
         
         # --- WAKE WORD INITIALIZATION ---
@@ -195,9 +203,13 @@ class BotGUI:
             self.interrupted.set()
             with self.tts_queue_lock:
                 self.tts_queue.clear()
+            with self.audio_queue_lock:
+                self.audio_queue.clear()
             if self.current_audio_process:
                 try: self.current_audio_process.terminate()
                 except: pass
+            try: sd.stop()
+            except: pass
             self.set_state(BotStates.IDLE, "Interrupted.")
 
     def load_animations(self):
@@ -275,9 +287,10 @@ class BotGUI:
     def safe_main_execution(self):
         try:
             self.warm_up_logic()
-            self.tts_active.set()
-            self.tts_thread = threading.Thread(target=self._tts_worker, daemon=True)
-            self.tts_thread.start()
+            self.synth_thread = threading.Thread(target=self._synth_worker, daemon=True)
+            self.synth_thread.start()
+            self.play_thread = threading.Thread(target=self._play_worker, daemon=True)
+            self.play_thread.start()
             
             while True:
                 if self.exiting:
@@ -732,21 +745,56 @@ class BotGUI:
             self.set_state(BotStates.ERROR, "Brain Freeze!")
 
     def wait_for_tts(self):
-        while self.tts_queue or self.tts_active.is_set():
+        # 两级都空闲才算"说完"：两个队列空，且合成/播放线程都不忙。
+        while (self.tts_queue or self.audio_queue
+               or self.synth_active.is_set() or self.play_active.is_set()):
             if self.interrupted.is_set(): break
             time.sleep(0.1)
 
-    def _tts_worker(self):
+    def _synth_worker(self):
+        # 阶段一：从 tts_queue 取文本，提前合成成音频缓冲，推入 audio_queue。
+        # 这样第 N 句播放期间第 N+1 句已在合成，句间空挡被消除。
         while True:
             text = None
             with self.tts_queue_lock:
-                if self.tts_queue: 
+                if self.tts_queue:
+                    self.synth_active.set()   # 先置忙再出队，避免 wait_for_tts 抢到"空队列+未置忙"
                     text = self.tts_queue.pop(0)
-                    self.tts_active.set() 
-            if text: 
-                self.speak(text)
-                self.tts_active.clear() 
-            else: time.sleep(0.05)
+            if text is None:
+                time.sleep(0.05)
+                continue
+            try:
+                if self.interrupted.is_set():
+                    continue
+                rendered = self._render(text)        # (samples, rate) 或 None
+                if rendered is None or self.interrupted.is_set():
+                    continue
+                # 背压：audio_queue 满则等播放线程消化，避免提前渲染堆积过多。
+                while not self.interrupted.is_set():
+                    with self.audio_queue_lock:
+                        if len(self.audio_queue) < self.audio_queue_max:
+                            self.audio_queue.append(rendered)
+                            break
+                    time.sleep(0.02)
+            finally:
+                self.synth_active.clear()
+
+    def _play_worker(self):
+        # 阶段二：从 audio_queue 取已渲染音频并播放。
+        while True:
+            item = None
+            with self.audio_queue_lock:
+                if self.audio_queue:
+                    self.play_active.set()    # 先置忙再出队，理由同上
+                    item = self.audio_queue.pop(0)
+            if item is None:
+                time.sleep(0.05)
+                continue
+            try:
+                if not self.interrupted.is_set():
+                    self._play_samples(*item)
+            finally:
+                self.play_active.clear()
 
     def _init_sherpa_tts(self):
         try:
@@ -759,6 +807,9 @@ class BotGUI:
                         lexicon=f"{model_dir}/lexicon.txt",
                         tokens=f"{model_dir}/tokens.txt",
                     ),
+                    # 默认单线程合成在 Pi 上慢到 ~0.5s/字；吃满多核可砍掉一半以上耗时。
+                    num_threads=CURRENT_CONFIG.get("sherpa_num_threads", 4),
+                    provider="cpu",
                 ),
                 rule_fsts=(
                     f"{model_dir}/date.fst,"
@@ -776,15 +827,35 @@ class BotGUI:
             self.sherpa_tts = None
 
     def speak(self, text):
-        clean = re.sub(r"[^\w\s,.!?:-，。！？、；：]", "", text)
-        if not clean.strip(): return
-        if self.sherpa_tts is not None:
-            self._speak_sherpa(clean)
-        else:
-            self._speak_piper(clean)
+        # 同步合成并播放一句（阻塞）。用于开场问候等流水线 worker 启动前的场景。
+        rendered = self._render(text)
+        if rendered is not None:
+            self._play_samples(*rendered)
 
-    def _speak_sherpa(self, text):
-        with timed_block(f"TTS sherpa [{text[:15]}...]"):
+    # --- 合成阶段：文本 → (samples float32 [-1,1], rate)，不播放 ---
+
+    def _render(self, text):
+        clean = re.sub(r"[^\w\s,.!?:-，。！？、；：]", "", text)
+        if not clean.strip(): return None
+        if self.sherpa_tts is not None:
+            return self._render_sherpa(clean)
+        return self._render_piper(clean)
+
+    def _fit_samplerate(self, samples, rate):
+        # 设备支持模型原生采样率就直接用；否则用多相重采样（比 FFT 法 resample 快很多）。
+        try:
+            sd.check_output_settings(samplerate=rate)
+            return samples, rate
+        except Exception:
+            try:
+                native_rate = int(sd.query_devices(kind='output')['default_samplerate'])
+            except Exception:
+                native_rate = 48000
+            resampled = scipy.signal.resample_poly(samples, native_rate, rate).astype(np.float32)
+            return resampled, native_rate
+
+    def _render_sherpa(self, text):
+        with timed_block(f"TTS sherpa synth [{text[:15]}...]"):
             print(f"[SHERPA TTS] '{text}'", flush=True)
             try:
                 audio = self.sherpa_tts.generate(
@@ -793,26 +864,41 @@ class BotGUI:
                     speed=CURRENT_CONFIG.get("sherpa_speed", 1.0),
                 )
                 samples = np.array(audio.samples, dtype=np.float32)
-                # Normalize to [-1, 1] so quiet model output plays at full volume
+                # 归一到 [-1,1]，让偏小的模型输出以满音量播放。
                 max_val = np.max(np.abs(samples))
                 if max_val > 0:
                     samples /= max_val
+                return self._fit_samplerate(samples, audio.sample_rate)
+            except Exception as e:
+                print(f"[SHERPA TTS ERROR] {e}, falling back to piper")
+                return self._render_piper(text)
 
-                playback_rate = audio.sample_rate
-                try:
-                    sd.check_output_settings(samplerate=playback_rate)
-                except Exception:
-                    try:
-                        native_rate = int(sd.query_devices(kind='output')['default_samplerate'])
-                    except Exception:
-                        native_rate = 48000
-                    num_samples = int(len(samples) * (native_rate / playback_rate))
-                    samples = scipy.signal.resample(samples, num_samples).astype(np.float32)
-                    playback_rate = native_rate
+    def _render_piper(self, text):
+        with timed_block(f"TTS piper synth [{text[:15]}...]"):
+            print(f"[PIPER SPEAKING] '{text}'", flush=True)
+            voice_model = CURRENT_CONFIG.get("voice_model", "piper/en_GB-semaine-medium.onnx")
+            try:
+                proc = subprocess.Popen(
+                    ["./piper/piper", "--model", voice_model, "--output-raw"],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL
+                )
+                raw, _ = proc.communicate(text.encode() + b'\n')
+                if not raw: return None
+                samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+                return self._fit_samplerate(samples, 22050)
+            except Exception as e:
+                print(f"Audio Error: {e}")
+                return None
 
-                sd.play(samples, playback_rate)
+    # --- 播放阶段：消费已渲染的音频缓冲 ---
+
+    def _play_samples(self, samples, rate):
+        with timed_block(f"TTS play [{rate}Hz {len(samples)}smp]"):
+            try:
+                sd.play(samples, rate)
                 while True:
-                    time.sleep(0.05)
                     if self.interrupted.is_set():
                         sd.stop()
                         break
@@ -822,70 +908,12 @@ class BotGUI:
                             break
                     except Exception:
                         break
-                time.sleep(0.2)
+                    time.sleep(0.05)
+                time.sleep(0.1)
             except Exception as e:
-                print(f"[SHERPA TTS ERROR] {e}, falling back to piper")
-                self._speak_piper(text)
+                print(f"Audio playback error: {e}")
             finally:
                 self.current_volume = 0
-
-    def _speak_piper(self, text):
-        with timed_block(f"TTS piper [{text[:15]}...]"):
-            print(f"[PIPER SPEAKING] '{text}'", flush=True)
-            voice_model = CURRENT_CONFIG.get("voice_model", "piper/en_GB-semaine-medium.onnx")
-
-            try:
-                self.current_audio_process = subprocess.Popen(
-                    ["./piper/piper", "--model", voice_model, "--output-raw"],
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL
-                )
-
-                self.current_audio_process.stdin.write(text.encode() + b'\n')
-                self.current_audio_process.stdin.close()
-
-                try:
-                    device_info = sd.query_devices(kind='output')
-                    native_rate = int(device_info['default_samplerate'])
-                except:
-                    native_rate = 48000
-
-                PIPER_RATE = 22050
-                use_native_rate = False
-
-                try:
-                    sd.check_output_settings(device=None, samplerate=PIPER_RATE)
-                except:
-                    use_native_rate = True
-
-                with sd.RawOutputStream(samplerate=native_rate if use_native_rate else PIPER_RATE,
-                                        channels=1, dtype='int16',
-                                        device=None, latency='low', blocksize=2048) as stream:
-                    while True:
-                        if self.interrupted.is_set(): break
-                        data = self.current_audio_process.stdout.read(4096)
-                        if not data: break
-
-                        audio_chunk = np.frombuffer(data, dtype=np.int16)
-                        if len(audio_chunk) > 0:
-                            self.current_volume = np.max(np.abs(audio_chunk))
-                            if use_native_rate:
-                                num_samples = int(len(audio_chunk) * (native_rate / PIPER_RATE))
-                                audio_chunk = scipy.signal.resample(audio_chunk, num_samples).astype(np.int16)
-                            stream.write(audio_chunk.tobytes())
-                        else:
-                            self.current_volume = 0
-                    time.sleep(0.5)
-
-            except Exception as e:
-                print(f"Audio Error: {e}")
-            finally:
-                self.current_volume = 0
-                if self.current_audio_process:
-                    if self.current_audio_process.stdout: self.current_audio_process.stdout.close()
-                    if self.current_audio_process.poll() is None: self.current_audio_process.terminate()
-                    self.current_audio_process = None
 
     def play_sound(self, file_path):
         # 通用 wav 播放器（档2 放松音频会复用）。
