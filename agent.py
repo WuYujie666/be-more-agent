@@ -26,11 +26,13 @@ import select
 import traceback
 import atexit
 import wave
+import collections
 
 # Core dependencies
 import sounddevice as sd
 import numpy as np
 import scipy.signal
+import webrtcvad
 
 # --- AI ENGINES ---
 import openwakeword
@@ -181,11 +183,11 @@ class BotGUI:
 
         if self.recording_active.is_set():
             print("[PTT] Toggle OFF", flush=True)
-            self.recording_active.clear() 
+            self.recording_active.clear()
         else:
             if self.current_state == BotStates.IDLE or "Wait" in self.status_var.get():
                 print("[PTT] Toggle ON", flush=True)
-                self.recording_active.set() 
+                self.recording_active.set()
                 self.ptt_event.set()
 
     def handle_speaking_interrupt(self, event=None):
@@ -278,24 +280,23 @@ class BotGUI:
             self.tts_thread.start()
             
             while True:
-                trigger_source = self.detect_wake_word_or_ptt()
+                if self.exiting:
+                    break
+                # 全程免手：持续监听，VAD 自动检测说话起止（取代唤醒词/PTT 触发闸门）。
+                # detect_wake_word_or_ptt() / record_voice_adaptive() / record_voice_ptt()
+                # 及唤醒词加载代码均保留但已停用，便于回滚对照。
+                self.set_state(BotStates.LISTENING, "我在听…")
+                audio_file = self.record_voice_vad()
+
                 if self.interrupted.is_set():
                     self.interrupted.clear()
                     self.set_state(BotStates.IDLE, "Resetting...")
                     continue
 
-                self.set_state(BotStates.LISTENING, "I'm listening!")
-                
-                audio_file = None
-                if trigger_source == "PTT":
-                    audio_file = self.record_voice_ptt()
-                else:
-                    audio_file = self.record_voice_adaptive()
-                
-                if not audio_file: 
-                    self.set_state(BotStates.IDLE, "Heard nothing.")
+                if not audio_file:
+                    # 没听到，安静地继续监听（不报错停顿，符合助眠场景）
                     continue
-                
+
                 user_text = self.transcribe_audio(audio_file)
                 if not user_text:
                     self.set_state(BotStates.IDLE, "Transcription empty.")
@@ -507,6 +508,99 @@ class BotGUI:
         
         return self.save_audio_buffer(buffer, filename, samplerate)
 
+    def record_voice_vad(self, filename="input.wav"):
+        """全程免手：webrtcvad 持续监听，检测到人声起始自动开始录音，
+        尾部静音自动停止。阻塞直到捕获完整一句话，返回 wav 路径；没听到则返回 None。
+        助眠场景的主输入路径（取代唤醒词/PTT 触发闸门）。"""
+        VAD_RATE = 16000
+        FRAME_MS = 30
+        frame_samples = int(VAD_RATE * FRAME_MS / 1000)  # 16000Hz×30ms = 480
+
+        aggressiveness = int(CURRENT_CONFIG.get("vad_aggressiveness", 2))
+        start_frames   = max(1, int(CURRENT_CONFIG.get("vad_start_ms", 150)   / FRAME_MS))
+        silence_frames = max(1, int(CURRENT_CONFIG.get("vad_silence_ms", 900) / FRAME_MS))
+        max_frames     = max(1, int(CURRENT_CONFIG.get("vad_max_record_ms", 30000) / FRAME_MS))
+        preroll_frames = max(0, int(CURRENT_CONFIG.get("vad_preroll_ms", 300) / FRAME_MS))
+        skip_frames    = int(200 / FRAME_MS)  # 丢弃头部 ~200ms，避开上一句 TTS 的房间回声尾巴
+
+        vad = webrtcvad.Vad(aggressiveness)
+
+        # webrtcvad 只吃 8/16/32/48kHz。优先 16000Hz 直采；设备只能跑 44100/48000 时
+        # 按原生率采集，再用最近邻重采样把每帧降到 480 个样本（复用唤醒词循环里的技巧）。
+        input_rate = choose_input_samplerate(INPUT_DEVICE_NAME, VAD_RATE)
+        use_resampling = (input_rate != VAD_RATE)
+        read_size = int(input_rate * FRAME_MS / 1000) if use_resampling else frame_samples
+
+        buffer = []                                          # 已确认录音的帧（int16, 16000Hz）
+        preroll = collections.deque(maxlen=preroll_frames)   # 起始前回看缓冲
+        recording = False
+        voiced_run = 0
+        silence_run = 0
+        total_frames = 0
+
+        try:
+            # 释放硬件，避免 Pi 上音频争用死锁（沿用 PTT 路径做法）
+            sd.stop()
+            time.sleep(0.2)
+            with sd.InputStream(samplerate=input_rate, channels=1, dtype='int16',
+                                blocksize=read_size, device=INPUT_DEVICE_NAME) as stream:
+                print("[VAD] Listening...", flush=True)
+                while True:
+                    if self.exiting:
+                        return None
+
+                    data, _overflow = stream.read(read_size)
+                    frame = np.frombuffer(data, dtype=np.int16)
+                    if frame.ndim > 1:
+                        frame = frame.flatten()
+
+                    if use_resampling:
+                        step = len(frame) / frame_samples
+                        idx = np.arange(0, len(frame), step)[:frame_samples].astype(int)
+                        frame = frame[idx]
+                    if len(frame) != frame_samples:   # webrtcvad 要求帧长精确，长度不对就跳过
+                        continue
+
+                    if skip_frames > 0:
+                        skip_frames -= 1
+                        continue
+
+                    is_speech = vad.is_speech(frame.tobytes(), VAD_RATE)
+
+                    if not recording:
+                        preroll.append(frame.copy())
+                        if is_speech:
+                            voiced_run += 1
+                            if voiced_run >= start_frames:
+                                recording = True
+                                buffer.extend(preroll)   # 预缓冲并入开头，避免吞掉第一个字
+                                preroll.clear()
+                                total_frames = len(buffer)
+                                silence_run = 0
+                                print("[VAD] Speech detected, recording...", flush=True)
+                        else:
+                            voiced_run = 0
+                    else:
+                        buffer.append(frame.copy())
+                        total_frames += 1
+                        if is_speech:
+                            silence_run = 0
+                        else:
+                            silence_run += 1
+                            if silence_run >= silence_frames:
+                                print("[VAD] Trailing silence, stop.", flush=True)
+                                break
+                        if total_frames >= max_frames:
+                            print("[VAD] Max record time reached, stop.", flush=True)
+                            break
+        except Exception as e:
+            print(f"[AUDIO ERROR] VAD Recording Failed: {e}", flush=True)
+            return None
+
+        if not buffer:
+            return None
+        return self.save_audio_buffer(buffer, filename, samplerate=VAD_RATE, already_int16=True)
+
     def record_voice_ptt(self, filename="input.wav"):
         print("Recording (PTT)...", flush=True)
         time.sleep(0.5)
@@ -530,11 +624,15 @@ class BotGUI:
             
         return self.save_audio_buffer(buffer, filename, samplerate)
 
-    def save_audio_buffer(self, buffer, filename, samplerate=16000):
+    def save_audio_buffer(self, buffer, filename, samplerate=16000, already_int16=False):
         if not buffer: return None
         audio_data = np.concatenate(buffer, axis=0).flatten()
-        audio_data = np.nan_to_num(audio_data, nan=0.0, posinf=0.0, neginf=0.0)
-        audio_data = (audio_data * 32767).astype(np.int16)
+        if already_int16:
+            # VAD 路径的 buffer 已是 int16 PCM，直接落盘，跳过 float×32767 换算。
+            audio_data = audio_data.astype(np.int16)
+        else:
+            audio_data = np.nan_to_num(audio_data, nan=0.0, posinf=0.0, neginf=0.0)
+            audio_data = (audio_data * 32767).astype(np.int16)
         with wave.open(filename, "wb") as wf:
             wf.setnchannels(1)
             wf.setsampwidth(2)

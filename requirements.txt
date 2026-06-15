@@ -1,6 +1,7 @@
 sounddevice
 numpy
 scipy
+webrtcvad-wheels
 openwakeword
 onnxruntime
 ollama
