@@ -17,8 +17,6 @@ import sounddevice as sd
 
 CONFIG_FILE = "config.json"
 MEMORY_FILE = "memory.json"
-WAKE_WORD_MODEL = "./wakeword.onnx"
-WAKE_WORD_THRESHOLD = 0.5
 
 # HARDWARE SETTINGS
 INPUT_DEVICE_NAME = None
@@ -26,27 +24,35 @@ INPUT_DEVICE_NAME = None
 DEFAULT_CONFIG = {
     "text_model": "gemma3:1b",
     "voice_model": "piper/en_GB-semaine-medium.onnx",
-    "chat_memory": True,
     "system_prompt_extras": "",
     "input_device": None,
     "input_sample_rate": None,
     "whisper_model": "ggml-base.en.bin",
     "whisper_lang": "en",
+    # --- 唤醒词（可被 config.json 覆盖）---
+    "wake_word_model": "./wakeword.onnx",
+    "wake_word_threshold": 0.5,
     # --- VAD（免手持续监听）---
     "vad_aggressiveness": 3,   # webrtcvad 灵敏度 0~3，越大越严格（越不易把噪声当人声）
     "vad_start_ms": 150,       # 连续多少毫秒判定为人声才算"开始说话"（防瞬时噪声误触发）
     "vad_silence_ms": 900,     # 尾部静音多久判定"说完"
     "vad_max_record_ms": 30000,# 单次最长录音
     "vad_preroll_ms": 300,     # 起始前回看缓冲，避免吞掉第一个字
-}
-
-# LLM SETTINGS
-OLLAMA_OPTIONS = {
-    'keep_alive': '-1',
-    'num_thread': 4,
-    'temperature': 0.7,
-    'top_k': 40,
-    'top_p': 0.9
+    # --- 夏尔巴 TTS（onnx 与 lexicon/tokens 必须配套；fst/far 一般无需改）---
+    "sherpa_model_dir": "sherpa-models/vits-zh-aishell3",
+    "sherpa_model_file": "vits-aishell3.int8.onnx",
+    "sherpa_lexicon_file": "lexicon.txt",
+    "sherpa_tokens_file": "tokens.txt",
+    "sherpa_rule_fsts": ["date.fst", "number.fst", "phone.fst", "new_heteronym.fst"],
+    "sherpa_rule_far": "rule.far",
+    # --- LLM 推理参数（浅合并：config.json 若覆盖需写全 5 个键）---
+    "ollama_options": {
+        'keep_alive': '-1',
+        'num_thread': 4,
+        'temperature': 0.7,
+        'top_k': 40,
+        'top_p': 0.9,
+    },
 }
 
 
@@ -64,7 +70,8 @@ def load_config():
     config = DEFAULT_CONFIG.copy()
     if os.path.exists(CONFIG_FILE):
         try:
-            with open(CONFIG_FILE, "r") as f:
+            # 显式 utf-8：config.json 含中文，Windows 默认 gbk 会解码失败而静默回退默认值。
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 user_config = json.load(f)
                 config.update(user_config)
         except Exception as e:
@@ -73,6 +80,11 @@ def load_config():
 
 CURRENT_CONFIG = load_config()
 TEXT_MODEL = CURRENT_CONFIG["text_model"]
+
+# 从合并后的配置重建模块级名字，保持 `from config import ...` 的导入接口不变。
+WAKE_WORD_MODEL = CURRENT_CONFIG["wake_word_model"]
+WAKE_WORD_THRESHOLD = CURRENT_CONFIG["wake_word_threshold"]
+OLLAMA_OPTIONS = CURRENT_CONFIG["ollama_options"]
 
 
 def resolve_input_device(config):
