@@ -19,11 +19,13 @@ def main():
     print("--- 睡前情绪梳理机器人 STARTING ---", flush=True)
 
     # 1. 创建 Tk 窗口和 GUI
+    #    autostart=False：不起 BotGUI 自带的开放式对话循环，改由 SleepFlow 驱动，
+    #    避免两个线程同时抢麦克风。
     root = tk.Tk()
-    app = BotGUI(root)
+    app = BotGUI(root, autostart=False)
 
     # 2. 创建 SleepFlow 状态机，传入 BotGUI 实例
-    #    SleepFlow 会自动接管对话循环，不需要 BotGUI.safe_main_execution
+    #    CHAT 状态委派给 app.run_chat_phase，复用 BotGUI 的录音/STT/LLM/TTS 内核。
     from flow import SleepFlow
     flow = SleepFlow(config=CURRENT_CONFIG, gui=app)
 
@@ -47,11 +49,11 @@ def main():
 #   python main.py   ← SleepFlow 状态机自动接管
 #
 # 关键变化:
-#   1. BotGUI 不再启动 safe_main_execution 线程
-#   2. SleepFlow 代替 safe_main_execution 控制交互流程
-#   3. BotGUI 的 set_state / speak / transcribe_audio 等方法被 SleepFlow 调用
-#   4. 原有唤醒词 / PTT / 开放式对话全部停用
-#   5. agent.py 本身不做任何修改
+#   1. BotGUI(autostart=False)：不启动 safe_main_execution 开放式对话循环
+#   2. SleepFlow 编排宏观状态；CHAT 委派 BotGUI.run_chat_phase 复用聊天内核
+#   3. BotGUI 的 set_state / run_chat_phase / warm_up / play_sound 等被 SleepFlow 调用
+#   4. 原有唤醒词 / PTT 停用；开放式对话仅在 python agent.py 独立运行时启用
+#   5. agent.py 仍可 python agent.py 独立运行（autostart 默认 True）
 # =========================================================================
 
 if __name__ == "__main__":

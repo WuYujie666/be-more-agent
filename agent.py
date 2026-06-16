@@ -56,7 +56,9 @@ from prompts import SYSTEM_PROMPT
 class BotGUI:
     BG_WIDTH, BG_HEIGHT = 800, 480
 
-    def __init__(self, master):
+    def __init__(self, master, autostart=True):
+        # autostart=True：独立运行（python agent.py）时自动起开放式对话循环。
+        # main.py 传 autostart=False，改由 SleepFlow 宏观状态机驱动聊天。
         self.master = master
         master.title("Pi Assistant")
         master.attributes('-fullscreen', True)
@@ -136,9 +138,10 @@ class BotGUI:
         self.exit_button = ttk.Button(master, text="Exit & Save", command=self.safe_exit)
 
         self.load_animations()
-        self.update_animation() 
-        
-        threading.Thread(target=self.safe_main_execution, daemon=True).start()
+        self.update_animation()
+
+        if autostart:
+            threading.Thread(target=self.safe_main_execution, daemon=True).start()
 
     # --- HELPERS ---
 
@@ -280,46 +283,83 @@ class BotGUI:
     # =========================================================================
 
     def safe_main_execution(self):
+        # 独立运行入口（python agent.py）：预热 + 开场问候 + 无限开放式对话循环。
         try:
             self.warm_up_logic()
-            self.synth_thread = threading.Thread(target=self._synth_worker, daemon=True)
-            self.synth_thread.start()
-            self.play_thread = threading.Thread(target=self._play_worker, daemon=True)
-            self.play_thread.start()
-            
-            while True:
-                if self.exiting:
-                    break
-                # 全程免手：持续监听，VAD 自动检测说话起止（取代唤醒词/PTT 触发闸门）。
-                # detect_wake_word_or_ptt() / record_voice_adaptive() / record_voice_ptt()
-                # 及唤醒词加载代码均保留但已停用，便于回滚对照。
-                self.set_state(BotStates.LISTENING, "我在听…")
-                audio_file = self.record_voice_vad()
-
-                if self.interrupted.is_set():
-                    self.interrupted.clear()
-                    self.set_state(BotStates.IDLE, "Resetting...")
-                    continue
-
-                if not audio_file:
-                    # 没听到，安静地继续监听（不报错停顿，符合助眠场景）
-                    continue
-
-                user_text = self.transcribe_audio(audio_file)
-                if not user_text:
-                    self.set_state(BotStates.IDLE, "Transcription empty.")
-                    continue
-                
-                self.append_to_text(f"YOU: {user_text}")
-                self.interrupted.clear()
-                with timed_block("完整一轮对话"):
-                    self.chat_and_respond(user_text)
-                    
+            # max_rounds=None / silence_timeout=None ＝ 原来的 while True 无限循环行为。
+            self.run_chat_phase(max_rounds=None, silence_timeout=None)
         except Exception as e:
             traceback.print_exc()
             self.set_state(BotStates.ERROR, f"Fatal Error: {str(e)[:40]}")
 
-    def warm_up_logic(self):
+    def run_chat_phase(self, max_rounds=None, silence_timeout=None, get_system_prompt=None):
+        """有界聊天阶段：跑满 max_rounds 或静音超时即返回，把控制权交回调用方。
+
+        - max_rounds=None      → 不限轮次（独立运行的无限循环）
+        - silence_timeout=None → 不因静音超时（一直等说话）
+        - get_system_prompt    → 可选 fn(round_num, max_rounds)，返回本轮 system prompt
+                                 （供 SleepFlow 注入"接近收尾"的轮次引导）
+
+        返回原因字符串："max_rounds"（聊满）/ "silence"（静音超时）/ "exit"（被停止）。
+        """
+        # 确保 TTS 流水线已就绪（独立运行经 warm_up_logic→warm_up 已启动；这里兜底幂等）。
+        self._ensure_tts_workers()
+
+        rounds = 0
+        while max_rounds is None or rounds < max_rounds:
+            if self.exiting:
+                return "exit"
+            # 全程免手：持续监听，VAD 自动检测说话起止（取代唤醒词/PTT 触发闸门）。
+            # detect_wake_word_or_ptt() / record_voice_adaptive() / record_voice_ptt()
+            # 及唤醒词加载代码均保留但已停用，便于回滚对照。
+            self.set_state(BotStates.LISTENING, "我在听…")
+            audio_file = self.record_voice_vad(timeout=silence_timeout)
+
+            if self.exiting:
+                return "exit"
+
+            if self.interrupted.is_set():
+                self.interrupted.clear()
+                self.set_state(BotStates.IDLE, "Resetting...")
+                continue
+
+            if not audio_file:
+                # timeout=None 时 record_voice_vad 不会返回 None（除非出错），继续监听；
+                # SleepFlow 传了 silence_timeout，静音超时返回 None → 结束本阶段。
+                if silence_timeout is not None:
+                    print("[CHAT] 静音超时，结束聊天阶段", flush=True)
+                    return "silence"
+                continue
+
+            user_text = self.transcribe_audio(audio_file)
+            if not user_text:
+                self.set_state(BotStates.IDLE, "Transcription empty.")
+                continue
+
+            self.append_to_text(f"YOU: {user_text}")
+            self.interrupted.clear()
+            system_override = get_system_prompt(rounds, max_rounds) if get_system_prompt else None
+            with timed_block("完整一轮对话"):
+                self.chat_and_respond(user_text, system_override=system_override)
+
+            rounds += 1
+
+        return "max_rounds"
+
+    def _ensure_tts_workers(self):
+        # 幂等启动两级 TTS 流水线 worker（合成线程 + 播放线程）。
+        # 关键：这两个 worker 必须在 chat_and_respond 往 tts_queue 塞句子前就上岗，
+        # 否则没人消费队列，wait_for_tts() 会永久卡死。
+        if self.synth_thread is None or not self.synth_thread.is_alive():
+            self.synth_thread = threading.Thread(target=self._synth_worker, daemon=True)
+            self.synth_thread.start()
+        if self.play_thread is None or not self.play_thread.is_alive():
+            self.play_thread = threading.Thread(target=self._play_worker, daemon=True)
+            self.play_thread.start()
+
+    def warm_up(self):
+        # LLM 前缀预热 + 启动 TTS 流水线 worker，不含开场问候。
+        # 独立运行经 warm_up_logic 调用；SleepFlow 的 BOOT 直接调本方法（问候走缓存话术）。
         self.set_state(BotStates.WARMUP, "Warming up brains...")
         # 不只是载入权重，还要把第1轮真实会话要用的 KV 前缀（system prompt + 历史）
         # 提前评估一遍，否则首轮 prompt-eval 会拖慢 LLM 首 Token（实测 ~16s）。
@@ -338,10 +378,15 @@ class BotGUI:
                 )
         except Exception as e:
             print(f"Failed to load {TEXT_MODEL}: {e}", flush=True)
-        # 档1: 原来播放英文游戏音效 greeting_sounds，改成中文开场问候（顺带预热首次 TTS 合成）。
-        # 档2 会把开场/过渡/收尾固定话术预合成为 wav 缓存，届时这里替换为直接播缓存。
-        self.speak("你好，我在。今天过得怎么样？")
+        self._ensure_tts_workers()
         print("Models loaded.", flush=True)
+
+    def warm_up_logic(self):
+        # 独立运行专用：预热 + 中文开场问候（顺带预热首次 TTS 合成）。
+        self.warm_up()
+        # 档1: 原来播放英文游戏音效 greeting_sounds，改成中文开场问候。
+        # 档2: SleepFlow 路径不走这里，开场/过渡/收尾固定话术由 flow 预合成为 wav 缓存。
+        self.speak("你好，我在。今天过得怎么样？")
 
     def detect_wake_word_or_ptt(self):
         self.set_state(BotStates.IDLE, "Waiting...")
@@ -516,10 +561,14 @@ class BotGUI:
         
         return self.save_audio_buffer(buffer, filename, samplerate)
 
-    def record_voice_vad(self, filename="input.wav"):
+    def record_voice_vad(self, filename="input.wav", timeout=None):
         """全程免手：webrtcvad 持续监听，检测到人声起始自动开始录音，
         尾部静音自动停止。阻塞直到捕获完整一句话，返回 wav 路径；没听到则返回 None。
-        助眠场景的主输入路径（取代唤醒词/PTT 触发闸门）。"""
+        助眠场景的主输入路径（取代唤醒词/PTT 触发闸门）。
+
+        timeout：等待说话起始的静音超时秒数。None＝一直等（独立运行行为）；
+                 SleepFlow 传入后，超过 timeout 秒无人开口则返回 None（仅对等待阶段生效，
+                 录音中途的停顿不受影响）。"""
         VAD_RATE = 16000
         FRAME_MS = 30
         frame_samples = int(VAD_RATE * FRAME_MS / 1000)  # 16000Hz×30ms = 480
@@ -545,6 +594,7 @@ class BotGUI:
         voiced_run = 0
         silence_run = 0
         total_frames = 0
+        idle_start = time.time()   # 等待说话起始的计时起点（配合 timeout）
 
         try:
             # 释放硬件，避免 Pi 上音频争用死锁（沿用 PTT 路径做法）
@@ -556,6 +606,12 @@ class BotGUI:
                 while True:
                     if self.exiting:
                         return None
+
+                    # 静音超时：仅在尚未开始录音的等待阶段生效（录音中途停顿不算）
+                    if not recording and timeout is not None:
+                        if time.time() - idle_start > timeout:
+                            print(f"[VAD TIMEOUT] No speech for {timeout}s", flush=True)
+                            return None
 
                     data, _overflow = stream.read(read_size)
                     frame = np.frombuffer(data, dtype=np.int16)
@@ -677,9 +733,11 @@ class BotGUI:
     # 5. CHAT & RESPOND
     # =========================================================================
 
-    def chat_and_respond(self, text):
+    def chat_and_respond(self, text, system_override=None):
         # 档1: 纯聊天路径。睡前梳理场景不需要工具调用（拍照/联网搜索已删除），
         # 模型只负责"接住用户这一句"，直接流式输出 → TTS。
+        # system_override：SleepFlow 注入的本轮 system prompt（get_chat_prompt），
+        #                  仅替换本次请求的 system 消息，不改写 permanent_memory 与记忆。
         if "forget everything" in text.lower() or "reset memory" in text.lower() \
                 or "清空记忆" in text or "忘记一切" in text:
             self.session_memory = []
@@ -695,7 +753,11 @@ class BotGUI:
         lang = CURRENT_CONFIG.get("whisper_lang", "en")
         lang_hint = "请用中文回答。" if lang == "zh" else ""
         user_msg = {"role": "user", "content": text + ("\n" + lang_hint if lang_hint else "")}
-        messages = self.permanent_memory + self.session_memory + [user_msg]
+        # 用 system_override 替换本次请求的 system（permanent_memory[0]），其余历史照常带上。
+        history = self.permanent_memory + self.session_memory
+        if system_override and history and history[0].get("role") == "system":
+            history = [{"role": "system", "content": system_override}] + history[1:]
+        messages = history + [user_msg]
 
         full_response_buffer = ""
         sentence_buffer = ""
@@ -797,24 +859,32 @@ class BotGUI:
             model_dir = CURRENT_CONFIG.get("sherpa_model_dir", "sherpa-models/vits-zh-aishell3")
             num_threads = CURRENT_CONFIG.get("sherpa_num_threads", 4)
             print(f"[INIT] Sherpa num_threads (from config) = {num_threads}", flush=True)
+
+            # 文件名均可在 config.json 覆盖；默认值＝aishell3 包内的固定布局。
+            # 换别的 sherpa 中文模型时改这几个键即可，无需动代码。
+            def _p(name):
+                # 空字符串透传（兼容无 lexicon 的模型），否则拼到模型目录下。
+                return os.path.join(model_dir, name) if name else ""
+
+            rule_fsts = ",".join(
+                _p(f) for f in CURRENT_CONFIG.get(
+                    "sherpa_rule_fsts",
+                    ["date.fst", "number.fst", "phone.fst", "new_heteronym.fst"],
+                ) if f
+            )
             cfg = sherpa_onnx.OfflineTtsConfig(
                 model=sherpa_onnx.OfflineTtsModelConfig(
                     vits=sherpa_onnx.OfflineTtsVitsModelConfig(
-                        model=f"{model_dir}/vits-aishell3.int8.onnx",
-                        lexicon=f"{model_dir}/lexicon.txt",
-                        tokens=f"{model_dir}/tokens.txt",
+                        model=_p(CURRENT_CONFIG.get("sherpa_model_file", "vits-aishell3.int8.onnx")),
+                        lexicon=_p(CURRENT_CONFIG.get("sherpa_lexicon_file", "lexicon.txt")),
+                        tokens=_p(CURRENT_CONFIG.get("sherpa_tokens_file", "tokens.txt")),
                     ),
                     # 默认单线程合成在 Pi 上慢到 ~0.5s/字；吃满多核可砍掉一半以上耗时。
                     num_threads=num_threads,
                     provider="cpu",
                 ),
-                rule_fsts=(
-                    f"{model_dir}/date.fst,"
-                    f"{model_dir}/number.fst,"
-                    f"{model_dir}/phone.fst,"
-                    f"{model_dir}/new_heteronym.fst"
-                ),
-                rule_fars=f"{model_dir}/rule.far",
+                rule_fsts=rule_fsts,
+                rule_fars=_p(CURRENT_CONFIG.get("sherpa_rule_far", "rule.far")),
                 max_num_sentences=1,
             )
             self.sherpa_tts = sherpa_onnx.OfflineTts(cfg)
