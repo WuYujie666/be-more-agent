@@ -17,5 +17,21 @@
   "vad_start_ms": 150,
   "vad_silence_ms": 900,
   "vad_max_record_ms": 30000,
-  "vad_preroll_ms": 300
+  "vad_preroll_ms": 300,
+
+  "sleep_flow": {
+    "max_chat_rounds": 5,
+    "silence_timeout_chat": 75,
+    "audio_type": "white_noise",
+    "audio_types": ["white_noise", "light_music", "meditation"],
+    "shutdown_timeout": 2700,
+    "shutdown_enabled": false,
+    "cache_dir": "cache",
+    "pre_synthesize_texts": {
+      "greeting": "晚上好，今天过得怎么样？有什么想说的吗？",
+      "transition": "好的，已经记下了。现在让我们慢慢放松，准备休息吧。",
+      "soft_close": "如果你没什么想说的了，我们就开始放松吧。",
+      "round5_close": "我们先到这里，准备休息吧。"
+    }
+  }
 }

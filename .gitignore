@@ -43,3 +43,6 @@ test_audio.wav
 Thumbs.db
 ehthumbs.db
 whisper.cpp/
+
+# --- Sleep Flow Cache ---
+cache/
