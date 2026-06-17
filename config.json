@@ -8,7 +8,6 @@
   "sherpa_num_threads": 4,
   "chat_memory": true,
   "system_prompt": "你是一个睡前陪伴机器人，帮用户在睡前梳理情绪。说话温和、简短，每次回应不超过两句话。只负责接住用户当下这一句，不出主意、不深挖、不在睡前帮用户解决烦心事；用户提到烦心事就先“寄存”——记下了，明天再想。",
-  "system_prompt_extras": "",
   "input_device": null,
   "input_sample_rate": 44100,
   "whisper_model": "ggml-base.bin",

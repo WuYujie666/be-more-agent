@@ -57,8 +57,8 @@ from config import (
     MEMORY_FILE,
     INPUT_DEVICE_NAME, OLLAMA_OPTIONS, CURRENT_CONFIG, TEXT_MODEL,
     BotStates, timed_block, choose_input_samplerate,
+    SYSTEM_PROMPT,
 )
-from prompts import SYSTEM_PROMPT
 
 # =========================================================================
 # 2. GUI CLASS

@@ -25,7 +25,6 @@ DEFAULT_CONFIG = {
     "text_model": "gemma3:1b",
     "voice_model": "piper/en_GB-semaine-medium.onnx",
     "chat_memory": True,
-    "system_prompt_extras": "",
     "input_device": None,
     "input_sample_rate": None,
     "whisper_model": "ggml-base.en.bin",
@@ -71,6 +70,8 @@ def load_config():
 
 CURRENT_CONFIG = load_config()
 TEXT_MODEL = CURRENT_CONFIG["text_model"]
+# 系统 prompt 唯一来源：config.json 的 system_prompt
+SYSTEM_PROMPT = CURRENT_CONFIG["system_prompt"]
 
 
 def resolve_input_device(config):
