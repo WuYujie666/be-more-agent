@@ -19,10 +19,7 @@ import time
 import json
 import os
 import subprocess
-import random
 import re
-import sys
-import select
 import traceback
 import atexit
 import wave
@@ -35,15 +32,13 @@ import scipy.signal
 import webrtcvad
 
 # --- AI ENGINES ---
-import openwakeword
-from openwakeword.model import Model
 import ollama
 
 # =========================================================================
-# 1. 配置 / 提示词从内部模块导入（拆出 config.py / prompts.py）
+# 1. 配置 / 提示词从内部模块导入
 # =========================================================================
 from config import (
-    MEMORY_FILE, WAKE_WORD_MODEL, WAKE_WORD_THRESHOLD,
+    MEMORY_FILE,
     INPUT_DEVICE_NAME, OLLAMA_OPTIONS, CURRENT_CONFIG, TEXT_MODEL,
     BotStates, timed_block, choose_input_samplerate,
 )
@@ -65,25 +60,21 @@ class BotGUI:
         master.bind('<Control-q>', lambda e: self.safe_exit())  # 退出程序
 
         # Inputs
-        master.bind('<Return>', self.handle_ptt_toggle)
         master.bind('<space>', self.handle_speaking_interrupt)
         atexit.register(self.safe_exit)
         master.focus_force()   # 抢焦点，确保 Escape 等按键能被窗口收到
-        
+
         # State
         self.current_state = BotStates.WARMUP
-        self.current_volume = 0 
+        self.current_volume = 0
         self.animations = {}
         self.current_frame_index = 0
 
         self.permanent_memory = self.load_chat_history()
         self.session_memory = []
 
-        self.last_ptt_time = 0 
-        self.ptt_event = threading.Event()       
-        self.recording_active = threading.Event() 
-        self.interrupted = threading.Event() 
-        
+        self.interrupted = threading.Event()
+
         self.tts_queue = []
         self.tts_queue_lock = threading.Lock()
         self.tts_active = threading.Event()
@@ -98,24 +89,6 @@ class BotGUI:
         self.synth_thread = None
         self.play_thread = None
         self.exiting = False
-        
-        # --- WAKE WORD INITIALIZATION ---
-        print("[INIT] Loading Wake Word...", flush=True)
-        self.oww_model = None
-        if os.path.exists(WAKE_WORD_MODEL):
-            try:
-                self.oww_model = Model(wakeword_model_paths=[WAKE_WORD_MODEL])
-                print("[INIT] Wake Word Loaded.", flush=True)
-            except TypeError:
-                try:
-                    self.oww_model = Model(wakeword_models=[WAKE_WORD_MODEL])
-                    print("[INIT] Wake Word Loaded (New API).", flush=True)
-                except Exception as e:
-                    print(f"[CRITICAL] Failed to load model: {e}")
-            except Exception as e:
-                print(f"[CRITICAL] Failed to load model: {e}")
-        else:
-            print(f"[CRITICAL] Model not found: {WAKE_WORD_MODEL}")
 
         # --- SHERPA TTS INITIALIZATION ---
         self.sherpa_tts = None
@@ -128,16 +101,16 @@ class BotGUI:
         self.background_label.bind('<Button-1>', self.toggle_hud_visibility)
 
         self.response_text = tk.Text(master, height=6, width=60, wrap=tk.WORD,
-                                     state=tk.DISABLED, bg="#ffffff", fg="#000000", font=('Arial', 12)) 
-        
+                                     state=tk.DISABLED, bg="#ffffff", fg="#000000", font=('Arial', 12))
+
         self.status_var = tk.StringVar(value="Initializing...")
         self.status_label = ttk.Label(master, textvariable=self.status_var, background="#2e2e2e", foreground="white")
-        
+
         self.exit_button = ttk.Button(master, text="Exit & Save", command=self.safe_exit)
 
         self.load_animations()
-        self.update_animation() 
-        
+        self.update_animation()
+
         threading.Thread(target=self.safe_main_execution, daemon=True).start()
 
     # --- HELPERS ---
@@ -153,11 +126,10 @@ class BotGUI:
                 self.current_audio_process.wait(timeout=1)
             except: pass
 
-        self.recording_active.clear()
         self.tts_active.clear()
-        
+
         self.save_chat_history()
-        
+
         try:
             ollama.generate(model=TEXT_MODEL, prompt="", keep_alive=0)
         except: pass
@@ -169,7 +141,7 @@ class BotGUI:
             self.master.quit()
         except Exception:
             pass
-        
+
     def toggle_fullscreen(self, event=None):
         # Escape：在全屏 / 窗口化之间切换，程序继续运行（退出请用 Ctrl+Q 或 Exit 按钮）。
         self.is_fullscreen = not self.is_fullscreen
@@ -186,21 +158,6 @@ class BotGUI:
                 self.status_label.place(relx=0.5, rely=1.0, anchor=tk.S, relwidth=1)
                 self.exit_button.place(x=10, y=10)
         except tk.TclError: pass
-
-    def handle_ptt_toggle(self, event=None):
-        current_time = time.time()
-        if current_time - self.last_ptt_time < 0.5: 
-            return 
-        self.last_ptt_time = current_time
-
-        if self.recording_active.is_set():
-            print("[PTT] Toggle OFF", flush=True)
-            self.recording_active.clear()
-        else:
-            if self.current_state == BotStates.IDLE or "Wait" in self.status_var.get():
-                print("[PTT] Toggle ON", flush=True)
-                self.recording_active.set()
-                self.ptt_event.set()
 
     def handle_speaking_interrupt(self, event=None):
         if self.current_state == BotStates.SPEAKING or self.current_state == BotStates.THINKING:
@@ -257,21 +214,21 @@ class BotGUI:
     def append_to_text(self, text, newline=True):
         def _update():
             self.response_text.config(state=tk.NORMAL)
-            if newline: 
+            if newline:
                 self.response_text.insert(tk.END, text + "\n")
-            else: 
+            else:
                 self.response_text.insert(tk.END, text)
-            
+
             self.response_text.see(tk.END)
             self.response_text.config(state=tk.DISABLED)
-            
+
         self.master.after(0, _update)
 
     def _stream_to_text(self, chunk):
         def update_text_stream():
             self.response_text.config(state=tk.NORMAL)
             self.response_text.insert(tk.END, chunk)
-            self.response_text.see(tk.END) 
+            self.response_text.see(tk.END)
             self.response_text.config(state=tk.DISABLED)
         self.master.after(0, update_text_stream)
 
@@ -286,13 +243,10 @@ class BotGUI:
             self.synth_thread.start()
             self.play_thread = threading.Thread(target=self._play_worker, daemon=True)
             self.play_thread.start()
-            
+
             while True:
                 if self.exiting:
                     break
-                # 全程免手：持续监听，VAD 自动检测说话起止（取代唤醒词/PTT 触发闸门）。
-                # detect_wake_word_or_ptt() / record_voice_adaptive() / record_voice_ptt()
-                # 及唤醒词加载代码均保留但已停用，便于回滚对照。
                 self.set_state(BotStates.LISTENING, "我在听…")
                 audio_file = self.record_voice_vad()
 
@@ -309,12 +263,12 @@ class BotGUI:
                 if not user_text:
                     self.set_state(BotStates.IDLE, "Transcription empty.")
                     continue
-                
+
                 self.append_to_text(f"YOU: {user_text}")
                 self.interrupted.clear()
                 with timed_block("完整一轮对话"):
                     self.chat_and_respond(user_text)
-                    
+
         except Exception as e:
             traceback.print_exc()
             self.set_state(BotStates.ERROR, f"Fatal Error: {str(e)[:40]}")
@@ -338,188 +292,12 @@ class BotGUI:
                 )
         except Exception as e:
             print(f"Failed to load {TEXT_MODEL}: {e}", flush=True)
-        # 档1: 原来播放英文游戏音效 greeting_sounds，改成中文开场问候（顺带预热首次 TTS 合成）。
-        # 档2 会把开场/过渡/收尾固定话术预合成为 wav 缓存，届时这里替换为直接播缓存。
         self.speak("你好，我在。今天过得怎么样？")
         print("Models loaded.", flush=True)
 
-    def detect_wake_word_or_ptt(self):
-        self.set_state(BotStates.IDLE, "Waiting...")
-        self.ptt_event.clear()
-        
-        if self.oww_model: self.oww_model.reset()
-
-        if self.oww_model is None:
-            self.ptt_event.wait()
-            self.ptt_event.clear()
-            return "PTT"
-
-        CHUNK_SIZE = 1280
-        OWW_SAMPLE_RATE = 16000
-
-        input_rate = choose_input_samplerate(INPUT_DEVICE_NAME, CURRENT_CONFIG.get("input_sample_rate"))
-        use_resampling = (input_rate != OWW_SAMPLE_RATE)
-        input_chunk_size = int(CHUNK_SIZE * (input_rate / OWW_SAMPLE_RATE)) if use_resampling else CHUNK_SIZE
-
-        stream_args = {
-            "samplerate": input_rate, 
-            "channels": 1, 
-            "dtype": 'int16', 
-            "blocksize": input_chunk_size, 
-            "device": INPUT_DEVICE_NAME
-        }
-
-        # Try to find a compatible block size and sample rate
-        try:
-            # First attempt: standard settings
-            self._listen_loop(stream_args, input_chunk_size, CHUNK_SIZE, use_resampling)
-        except StopIteration as si:
-            return str(si)
-        except Exception as e:
-            print(f"[AUDIO] Stream failed with defaults: {e}. Retrying with loose settings...", flush=True)
-            try:
-                # Second attempt: Let PortAudio decide blocksize (0) and latency
-                stream_args["blocksize"] = 0 
-                stream_args["latency"] = "high"
-                # If blocksize is variable, we must read specific amounts manually or handle buffering.
-                # Simplest fallback: Just attempt small fixed block
-                stream_args["blocksize"] = 1024
-                use_resampling = True
-                
-                self._listen_loop(stream_args, 1024, CHUNK_SIZE, use_resampling)
-            except StopIteration as si:
-                return str(si)
-            except Exception as e2:
-                print(f"[CRITICAL] Wake Word Stream Error: {e2}")
-                self.ptt_event.wait()
-                return "PTT"
-        
-        return "WAKE"
-
-    def _listen_loop(self, stream_args, input_chunk_size, target_chunk_size, use_resampling):
-        # Force software backend (no mmap) via environment variable if possible, 
-        # but here we can try to hint loop settings.
-        # However, the most effective fix for ALSA mmap issues is often just asking for 'blocksize=0' 
-        # and letting portaudio manage the buffering, OR very small chunks.
-        
-        # Let's try to be less aggressive with reads.
-        
-         with sd.InputStream(**stream_args) as stream:
-                print(f"[AUDIO] Listening with rate {stream_args['samplerate']} and block {stream_args['blocksize']}", flush=True)
-                
-                # Pre-allocate buffer for speed
-                # If blocksize is 0, we read what is available.
-                
-                while True:
-                    if self.ptt_event.is_set():
-                        self.ptt_event.clear()
-                        raise StopIteration("PTT")
-
-                    rlist, _, _ = select.select([sys.stdin], [], [], 0.001)
-                    if rlist: 
-                        sys.stdin.readline()
-                        raise StopIteration("CLI")
-
-                    # If fallback mode (blocksize 0), read fixed amount
-                    read_size = input_chunk_size
-                    if stream_args.get('blocksize') == 0:
-                        read_size = 1024 # Safe small read
-                    
-                    try:
-                        data, overflow = stream.read(read_size)
-                        if overflow:
-                            print("!", end="", flush=True) 
-                            # If we overflow excessively, raise error to trigger fallback to SAFE MODE (PulseAudio/Software)
-                            # We can use a simple counter attached to the function or object, but here raising immediately 
-                            # after a few in a row is safest.
-                            raise RuntimeError("Audio Buffer Overflow - Triggering Safe Mode")
-                    except Exception as e:
-                        # Convert uncatchable PaErrorCode wrapper to standard Exception if needed
-                        # But honestly, `raise e` should work... unless it's a SystemExit?
-                        # Let's wrap it in a new exception to be sure it bubbles up
-                        raise RuntimeError(f"Audio read failed: {e}")
-
-                    audio_data = np.frombuffer(data, dtype=np.int16)
-
-                    # Ensure flattening for openwakeword compatibility
-                    if audio_data.ndim > 1:
-                        audio_data = audio_data.flatten()
-
-                    if use_resampling:
-                        # FAST RESAMPLING: Nearest-neighbor slicing instead of scipy.signal.resample
-                        # This avoids the CPU bottleneck that causes overflow (!!!!!!!) on Raspberry Pi
-                        step = len(audio_data) / target_chunk_size
-                        indices = np.arange(0, len(audio_data), step)[:target_chunk_size].astype(int)
-                        audio_data = audio_data[indices]
-                    
-                    # Convert to float for model prediction without needing heavy resampling logic
-                    # The wake word model needs 16000, which we just faked above.
-                    
-                    # Debug volume occasionally
-                    current_max = np.max(np.abs(audio_data))
-                    
-                    # Only predict if volume is significant to save CPU
-                    if current_max > 200: 
-                        prediction = self.oww_model.predict(audio_data)
-                        for mdl in self.oww_model.prediction_buffer.keys():
-                            score = list(self.oww_model.prediction_buffer[mdl])[-1]
-                            if score > 0.1: # Show potential triggers
-                                print(f"\r[Oww] Score: {score:.3f} | Vol: {current_max}   ", end="", flush=True)
-
-                            if score > WAKE_WORD_THRESHOLD:
-                                print(f"\n[WAKE] Triggered on '{mdl}' with score: {score:.2f}", flush=True)
-                                self.oww_model.reset() 
-                                return # Success
-
-
-    def record_voice_adaptive(self, filename="input.wav"):
-        print("Recording (Adaptive)...", flush=True)
-        time.sleep(0.5) 
-        samplerate = choose_input_samplerate(INPUT_DEVICE_NAME, CURRENT_CONFIG.get("input_sample_rate"))
-
-        silence_threshold = 0.006
-        silence_duration = 1.5
-        max_record_time = 30.0
-        buffer = []
-        silent_chunks = 0
-        chunk_duration = 0.05 
-        chunk_size = int(samplerate * chunk_duration)
-        
-        num_silent_chunks = int(silence_duration / chunk_duration)
-        max_chunks = int(max_record_time / chunk_duration)
-        recorded_chunks = 0
-        silence_started = False
-
-        def callback(indata, frames, time_info, status):
-            nonlocal silent_chunks, recorded_chunks, silence_started
-            volume_norm = np.linalg.norm(indata) / np.sqrt(len(indata))
-            buffer.append(indata.copy())  
-            recorded_chunks += 1
-            if recorded_chunks < 5: return 
-            if volume_norm < silence_threshold:
-                silent_chunks += 1
-                if silent_chunks >= num_silent_chunks: silence_started = True
-            else: silent_chunks = 0
-
-        try:
-            # Explicitly close stream if it exists to free hardware
-            sd.stop()
-            time.sleep(0.2)
-            
-            with sd.InputStream(samplerate=samplerate, channels=1, callback=callback, 
-                                device=INPUT_DEVICE_NAME, blocksize=chunk_size): 
-                while not silence_started and recorded_chunks < max_chunks:
-                    sd.sleep(int(chunk_duration * 1000))
-        except Exception as e: 
-            print(f"[AUDIO ERROR] Adaptive Recording Failed: {e}", flush=True)
-            return None 
-        
-        return self.save_audio_buffer(buffer, filename, samplerate)
-
     def record_voice_vad(self, filename="input.wav"):
-        """全程免手：webrtcvad 持续监听，检测到人声起始自动开始录音，
-        尾部静音自动停止。阻塞直到捕获完整一句话，返回 wav 路径；没听到则返回 None。
-        助眠场景的主输入路径（取代唤醒词/PTT 触发闸门）。"""
+        """webrtcvad 持续监听，检测到人声起始自动开始录音，尾部静音自动停止。
+        阻塞直到捕获完整一句话，返回 wav 路径；没听到则返回 None。"""
         VAD_RATE = 16000
         FRAME_MS = 30
         frame_samples = int(VAD_RATE * FRAME_MS / 1000)  # 16000Hz×30ms = 480
@@ -534,7 +312,7 @@ class BotGUI:
         vad = webrtcvad.Vad(aggressiveness)
 
         # webrtcvad 只吃 8/16/32/48kHz。优先 16000Hz 直采；设备只能跑 44100/48000 时
-        # 按原生率采集，再用最近邻重采样把每帧降到 480 个样本（复用唤醒词循环里的技巧）。
+        # 按原生率采集，再用最近邻重采样把每帧降到 480 个样本。
         input_rate = choose_input_samplerate(INPUT_DEVICE_NAME, VAD_RATE)
         use_resampling = (input_rate != VAD_RATE)
         read_size = int(input_rate * FRAME_MS / 1000) if use_resampling else frame_samples
@@ -547,7 +325,7 @@ class BotGUI:
         total_frames = 0
 
         try:
-            # 释放硬件，避免 Pi 上音频争用死锁（沿用 PTT 路径做法）
+            # 释放硬件，避免 Pi 上音频争用死锁
             sd.stop()
             time.sleep(0.2)
             with sd.InputStream(samplerate=input_rate, channels=1, dtype='int16',
@@ -609,29 +387,6 @@ class BotGUI:
             return None
         return self.save_audio_buffer(buffer, filename, samplerate=VAD_RATE, already_int16=True)
 
-    def record_voice_ptt(self, filename="input.wav"):
-        print("Recording (PTT)...", flush=True)
-        time.sleep(0.5)
-        samplerate = choose_input_samplerate(INPUT_DEVICE_NAME, CURRENT_CONFIG.get("input_sample_rate"))
-
-        buffer = []
-        def callback(indata, frames, time_info, status): buffer.append(indata.copy())
-        
-        try:
-            # Explicitly close stream if it exists to free hardware
-            # This is critical on Pi 5 where hardware contention causes freezes
-            sd.stop() 
-            time.sleep(0.2)
-            
-            with sd.InputStream(samplerate=samplerate, channels=1, callback=callback, device=INPUT_DEVICE_NAME):
-                while self.recording_active.is_set(): 
-                    sd.sleep(50)
-        except Exception as e: 
-            print(f"[AUDIO ERROR] PTT Recording Failed: {e}", flush=True)
-            return None
-            
-        return self.save_audio_buffer(buffer, filename, samplerate)
-
     def save_audio_buffer(self, buffer, filename, samplerate=16000, already_int16=False):
         if not buffer: return None
         audio_data = np.concatenate(buffer, axis=0).flatten()
@@ -646,7 +401,6 @@ class BotGUI:
             wf.setsampwidth(2)
             wf.setframerate(samplerate)
             wf.writeframes(audio_data.tobytes())
-        # 档1: 去掉录音结束后的英文确认音效（got_it.wav 等）；录音→思考的切换由 GUI 状态体现。
         return filename
 
     def transcribe_audio(self, filename):
@@ -678,8 +432,6 @@ class BotGUI:
     # =========================================================================
 
     def chat_and_respond(self, text):
-        # 档1: 纯聊天路径。睡前梳理场景不需要工具调用（拍照/联网搜索已删除），
-        # 模型只负责"接住用户这一句"，直接流式输出 → TTS。
         if "forget everything" in text.lower() or "reset memory" in text.lower() \
                 or "清空记忆" in text or "忘记一切" in text:
             self.session_memory = []
@@ -734,7 +486,7 @@ class BotGUI:
 
             self.wait_for_tts()
             self.set_state(BotStates.IDLE, "Ready")
-                
+
         except Exception as e:
             print(f"LLM Error: {e}")
             self.set_state(BotStates.ERROR, "Brain Freeze!")
@@ -911,34 +663,6 @@ class BotGUI:
                 print(f"Audio playback error: {e}")
             finally:
                 self.current_volume = 0
-
-    def play_sound(self, file_path):
-        # 通用 wav 播放器（档2 放松音频会复用）。
-
-        if not file_path or not os.path.exists(file_path): return
-        try:
-            with wave.open(file_path, 'rb') as wf:
-                file_sr = wf.getframerate()
-                data = wf.readframes(wf.getnframes())
-                audio = np.frombuffer(data, dtype=np.int16)
-
-            try:
-                device_info = sd.query_devices(kind='output')
-                native_rate = int(device_info['default_samplerate'])
-            except:
-                native_rate = 48000 
-
-            playback_rate = file_sr
-            try:
-                sd.check_output_settings(device=None, samplerate=file_sr)
-            except:
-                playback_rate = native_rate
-                num_samples = int(len(audio) * (native_rate / file_sr))
-                audio = scipy.signal.resample(audio, num_samples).astype(np.int16)
-
-            sd.play(audio, playback_rate)
-            sd.wait() 
-        except: pass
 
     def load_chat_history(self):
         system_msg = {"role": "system", "content": SYSTEM_PROMPT}
