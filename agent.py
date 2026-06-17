@@ -71,21 +71,27 @@ class BotGUI:
     （录音、LLM、TTS）跑在后台线程，通过线程安全队列与 Event 协调。
     """
 
-    BG_WIDTH, BG_HEIGHT = 800, 480
-
     def __init__(self, master):
         """搭好界面、加载历史与模型、起动后台主循环线程。"""
         self.master = master
         master.title("Pi Assistant")
-        master.attributes('-fullscreen', True)
-        self.is_fullscreen = True
-        master.bind('<Escape>', self.toggle_fullscreen)   # 只切换全屏，不退程序
+        master.geometry("800x480")
+        master.minsize(480, 300)
+        self.is_fullscreen = False
+        master.bind('<Escape>', self.toggle_fullscreen)        # 全屏/窗口切换
         master.bind('<Control-q>', lambda e: self.safe_exit())  # 退出程序
+        master.bind('<Configure>', self.on_window_resize)      # 窗口尺寸变化时重新居中
 
         # Inputs
         master.bind('<space>', self.handle_speaking_interrupt)
         atexit.register(self.safe_exit)
         master.focus_force()   # 抢焦点，确保 Escape 等按键能被窗口收到
+        master.configure(bg='#1a1a2e')   # 动画区外背景色
+
+        # 动画区固定 800×450（5 倍像素缩放），在窗口内居中
+        self.anim_w, self.anim_h = 800, 450
+        self.anim_x = (800 - self.anim_w) // 2   # = 0
+        self.anim_y = (480 - self.anim_h) // 2   # = 15
 
         # State
         self.current_state = BotStates.WARMUP
@@ -120,16 +126,25 @@ class BotGUI:
 
         # GUI Setup
         self.background_label = tk.Label(master)
-        self.background_label.place(x=0, y=15, width=self.BG_WIDTH, height=450)
+        self.background_label.place(x=self.anim_x, y=self.anim_y, width=self.anim_w, height=self.anim_h)
         self.background_label.bind('<Button-1>', self.toggle_hud_visibility)
 
-        self.response_text = tk.Text(master, height=6, width=60, wrap=tk.WORD,
-                                     state=tk.DISABLED, bg="#ffffff", fg="#000000", font=('Arial', 12))
+        # --- 聊天气泡系统（Canvas + 自动滚动，初始隐藏）---
+        self.chat_canvas = tk.Canvas(master, bg='#ffffff', highlightthickness=0)
+        self.chat_scrollbar = ttk.Scrollbar(master, orient='vertical', command=self.chat_canvas.yview)
+        self.chat_inner = tk.Frame(self.chat_canvas, bg='#ffffff')
+        self.chat_inner.bind('<Configure>',
+            lambda e: self.chat_canvas.configure(scrollregion=self.chat_canvas.bbox('all')))
+        self.chat_canvas.create_window((0, 0), window=self.chat_inner, anchor='nw')
+        self.chat_canvas.configure(yscrollcommand=self.chat_scrollbar.set)
+        self._last_bot_var = None   # 流式追加时跟踪最后一条 bot 气泡
+        self._chat_height = 130     # 聊天气泡面板默认高度
 
         self.status_var = tk.StringVar(value="Initializing...")
         self.status_label = ttk.Label(master, textvariable=self.status_var, background="#2e2e2e", foreground="white")
 
         self.exit_button = ttk.Button(master, text="Exit & Save", command=self.safe_exit)
+        self.fullscreen_button = ttk.Button(master, text="全屏", command=self.toggle_fullscreen_btn)
 
         self.load_animations()
         self.update_animation()
@@ -167,21 +182,39 @@ class BotGUI:
             pass
 
     def toggle_fullscreen(self, event=None):
-        # Escape：在全屏 / 窗口化之间切换，程序继续运行（退出请用 Ctrl+Q 或 Exit 按钮）。
+        # 全屏 / 窗口化切换（程序继续运行；退出请用 Ctrl+Q 或 Exit 按钮）。
+        # 退出全屏时恢复 800×480 窗口，并同步按钮文字。
         self.is_fullscreen = not self.is_fullscreen
         self.master.attributes('-fullscreen', self.is_fullscreen)
+        if not self.is_fullscreen:
+            self.master.geometry("800x480")
+        if hasattr(self, 'fullscreen_button'):
+            self.fullscreen_button.config(text="窗口" if self.is_fullscreen else "全屏")
+
+    def toggle_fullscreen_btn(self):
+        """「全屏/窗口」按钮回调，与按 Esc 等效。"""
+        self.toggle_fullscreen()
 
     def toggle_hud_visibility(self, event=None):
-        """点击画面：在「只显示动画」和「显示文字/状态/退出按钮」之间切换。"""
+        """点击画面：在「只显示动画」和「显示聊天气泡/状态/按钮」之间切换。"""
         try:
-            if self.response_text.winfo_ismapped():
-                self.response_text.place_forget()
+            if self.chat_canvas.winfo_ismapped():
+                self.chat_canvas.place_forget()
+                self.chat_scrollbar.place_forget()
                 self.status_label.place_forget()
                 self.exit_button.place_forget()
+                self.fullscreen_button.place_forget()
             else:
-                self.response_text.place(relx=0.5, rely=0.82, anchor=tk.S)
+                ch = self.master.winfo_height()
+                cw = self.master.winfo_width()
+                chat_h = min(self._chat_height, ch // 3)
+                chat_w = cw - 40
+                chat_y = ch - chat_h - 22
+                self.chat_canvas.place(x=20, y=chat_y, width=chat_w, height=chat_h)
+                self.chat_scrollbar.place(x=cw-20, y=chat_y, height=chat_h)
                 self.status_label.place(relx=0.5, rely=1.0, anchor=tk.S, relwidth=1)
                 self.exit_button.place(x=10, y=10)
+                self.fullscreen_button.place(x=105, y=10)
         except tk.TclError: pass
 
     def handle_speaking_interrupt(self, event=None):
@@ -209,7 +242,7 @@ class BotGUI:
             if os.path.exists(folder):
                 files = sorted([f for f in os.listdir(folder) if f.lower().endswith('.png')])
                 for f in files:
-                    img = Image.open(os.path.join(folder, f)).resize((800, 450), Image.NEAREST)
+                    img = Image.open(os.path.join(folder, f)).resize((self.anim_w, self.anim_h), Image.NEAREST)
                     self.animations[state].append(ImageTk.PhotoImage(img))
             if not self.animations[state]:
                 if "idle" in self.animations and self.animations["idle"]:
@@ -240,28 +273,60 @@ class BotGUI:
             if msg: self.status_var.set(msg)
         self.master.after(0, _update)
 
-    def append_to_text(self, text, newline=True):
-        """向对话框追加整段文字（用于整句，如 "YOU: ..."），跨线程安全。"""
+    def add_message(self, role, text):
+        """新增一条聊天气泡。role='user'（右对齐黄底）或 'bot'（左对齐灰底）。
+        bot 气泡会记下其 StringVar，供 stream_to_bubble 逐字追加。跨线程安全。"""
         def _update():
-            self.response_text.config(state=tk.NORMAL)
-            if newline:
-                self.response_text.insert(tk.END, text + "\n")
-            else:
-                self.response_text.insert(tk.END, text)
+            is_user = role == 'user'
+            bg = '#fff3cd' if is_user else '#f0f0f0'
+            side = 'right' if is_user else 'left'
 
-            self.response_text.see(tk.END)
-            self.response_text.config(state=tk.DISABLED)
+            frame = tk.Frame(self.chat_inner, bg='#ffffff')
+            frame.pack(fill='x', padx=8, pady=2, expand=True)
 
+            cw = self.chat_canvas.winfo_width()
+            max_w = int(cw * 0.7) if cw > 100 else 350
+
+            var = tk.StringVar(value=text)
+            lbl = tk.Label(frame, textvariable=var, wraplength=max_w,
+                           bg=bg, font=('Arial', 11), padx=10, pady=5,
+                           justify='left', anchor='w')
+            lbl.pack(side=side)
+
+            # 记录 bot 气泡的 StringVar，供 stream_to_bubble 流式追加
+            self._last_bot_var = None if is_user else var
+
+            self.chat_canvas.yview_moveto(1.0)
         self.master.after(0, _update)
 
-    def _stream_to_text(self, chunk):
-        """把 LLM 流式吐出的小片段实时拼接到对话框，实现逐字显示。"""
-        def update_text_stream():
-            self.response_text.config(state=tk.NORMAL)
-            self.response_text.insert(tk.END, chunk)
-            self.response_text.see(tk.END)
-            self.response_text.config(state=tk.DISABLED)
-        self.master.after(0, update_text_stream)
+    def stream_to_bubble(self, chunk):
+        """把 LLM 流式吐出的片段实时追加到最后一条 bot 气泡，实现逐字显示。"""
+        def _update():
+            if self._last_bot_var is None:
+                return
+            self._last_bot_var.set(self._last_bot_var.get() + chunk)
+            self.chat_canvas.yview_moveto(1.0)
+        self.master.after(0, _update)
+
+    def on_window_resize(self, event):
+        """窗口尺寸变化时，重新把动画区和（可见的）聊天面板居中/定位。"""
+        if event.widget != self.master:
+            return
+        w = event.width
+        h = event.height
+        self.anim_x = (w - self.anim_w) // 2
+        self.anim_y = (h - self.anim_h) // 2
+        self.background_label.place(x=self.anim_x, y=self.anim_y)
+        # 聊天面板当前可见时一并重新定位
+        try:
+            if self.chat_canvas.winfo_ismapped():
+                chat_h = min(self._chat_height, h // 3)
+                chat_w = w - 40
+                chat_y = h - chat_h - 22
+                self.chat_canvas.place(x=20, y=chat_y, width=chat_w, height=chat_h)
+                self.chat_scrollbar.place(x=w-20, y=chat_y, height=chat_h)
+        except tk.TclError:
+            pass
 
     # =========================================================================
     # 4. CORE LOGIC
@@ -297,14 +362,14 @@ class BotGUI:
                     self.set_state(BotStates.IDLE, "Transcription empty.")
                     continue
 
-                self.append_to_text(f"YOU: {user_text}")
+                self.add_message("user", user_text)
                 self.interrupted.clear()
                 with timed_block("完整一轮对话"):
                     self.chat_and_respond(user_text)
 
         except Exception as e:
             traceback.print_exc()
-            self.set_state(BotStates.ERROR, f"Fatal Error: {str(e)[:40]}")
+            self.set_state(BotStates.IDLE, f"Fatal Error: {str(e)[:40]}")
 
     def warm_up_logic(self):
         """开机预热：先空跑一次 LLM 摊销首轮延迟，再播放开场问候（顺带预热 TTS）。"""
@@ -326,6 +391,7 @@ class BotGUI:
                 )
         except Exception as e:
             print(f"Failed to load {TEXT_MODEL}: {e}", flush=True)
+        self.set_state(BotStates.GREETING, "晚上好")
         self.speak("你好，我在。今天过得怎么样？")
         print("Models loaded.", flush=True)
 
@@ -502,9 +568,9 @@ class BotGUI:
 
                 if self.current_state != BotStates.SPEAKING:
                     self.set_state(BotStates.SPEAKING, "Speaking...")
-                    self.append_to_text("BOT: ", newline=False)
+                    self.add_message("bot", "")
 
-                self._stream_to_text(content)
+                self.stream_to_bubble(content)
 
                 sentence_buffer += content
                 if any(punct in content for punct in ".!?\n。！？"):
@@ -515,7 +581,6 @@ class BotGUI:
 
             if sentence_buffer.strip() and re.search(r'[\w一-鿿]', sentence_buffer):
                 with self.tts_queue_lock: self.tts_queue.append(sentence_buffer.strip())
-            self.append_to_text("")
             self.session_memory.append({"role": "assistant", "content": full_response_buffer})
 
             self.wait_for_tts()
@@ -523,7 +588,7 @@ class BotGUI:
 
         except Exception as e:
             print(f"LLM Error: {e}")
-            self.set_state(BotStates.ERROR, "Brain Freeze!")
+            self.set_state(BotStates.IDLE, "Brain Freeze!")
 
     def wait_for_tts(self):
         # 两级都空闲才算"说完"：两个队列空，且合成/播放线程都不忙。
@@ -586,7 +651,7 @@ class BotGUI:
             cfg = sherpa_onnx.OfflineTtsConfig(
                 model=sherpa_onnx.OfflineTtsModelConfig(
                     vits=sherpa_onnx.OfflineTtsVitsModelConfig(
-                        model=f"{model_dir}/vits-aishell3.int8.onnx",
+                        model=f"{model_dir}/vits-aishell3.onnx",
                         lexicon=f"{model_dir}/lexicon.txt",
                         tokens=f"{model_dir}/tokens.txt",
                     ),
