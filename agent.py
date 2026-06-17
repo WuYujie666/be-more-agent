@@ -54,7 +54,6 @@ from prompts import SYSTEM_PROMPT
 # =========================================================================
 
 class BotGUI:
-    BG_WIDTH, BG_HEIGHT = 800, 480
 
     def __init__(self, master, autostart=True):
         # autostart=True：独立运行（python agent.py）时自动起开放式对话循环。
@@ -71,7 +70,19 @@ class BotGUI:
         master.bind('<space>', self.handle_speaking_interrupt)
         atexit.register(self.safe_exit)
         master.focus_force()   # 抢焦点，确保 Escape 等按键能被窗口收到
-        
+        master.configure(bg='#1a1a2e')   # 动画区外背景色
+
+        # 动态居中：根据屏幕计算 16:9 动画区域
+        screen_w = master.winfo_screenwidth()
+        screen_h = master.winfo_screenheight()
+        self.anim_w = screen_w
+        self.anim_h = int(screen_w * 9 / 16)
+        if self.anim_h > screen_h:
+            self.anim_h = screen_h
+            self.anim_w = int(screen_h * 16 / 9)
+        self.anim_x = (screen_w - self.anim_w) // 2
+        self.anim_y = (screen_h - self.anim_h) // 2
+
         # State
         self.current_state = BotStates.WARMUP
         self.current_volume = 0 
@@ -126,7 +137,7 @@ class BotGUI:
 
         # GUI Setup
         self.background_label = tk.Label(master)
-        self.background_label.place(x=0, y=15, width=self.BG_WIDTH, height=450)
+        self.background_label.place(x=self.anim_x, y=self.anim_y, width=self.anim_w, height=self.anim_h)
         self.background_label.bind('<Button-1>', self.toggle_hud_visibility)
 
         self.response_text = tk.Text(master, height=6, width=60, wrap=tk.WORD,
@@ -228,7 +239,7 @@ class BotGUI:
             if os.path.exists(folder):
                 files = sorted([f for f in os.listdir(folder) if f.lower().endswith('.png')])
                 for f in files:
-                    img = Image.open(os.path.join(folder, f)).resize((800, 450), Image.NEAREST)
+                    img = Image.open(os.path.join(folder, f)).resize((self.anim_w, self.anim_h), Image.NEAREST)
                     self.animations[state].append(ImageTk.PhotoImage(img))
             if not self.animations[state]:
                 if "idle" in self.animations and self.animations["idle"]:
@@ -799,7 +810,7 @@ class BotGUI:
                 
         except Exception as e:
             print(f"LLM Error: {e}")
-            self.set_state(BotStates.ERROR, "Brain Freeze!")
+            self.set_state(BotStates.IDLE, "Brain Freeze!")
 
     def wait_for_tts(self):
         # 两级都空闲才算"说完"：两个队列空，且合成/播放线程都不忙。

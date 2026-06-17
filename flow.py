@@ -286,10 +286,11 @@ class SleepFlow:
 
     def _run_boot(self):
         """预热模型/TTS 流水线，播放开机问候，自动转入 CHAT"""
-        self._set_state("greeting", "晚上好")
+        self._set_state("warmup", "预热中…")
         # LLM 前缀预热 + 启动 TTS worker（CHAT 委派 run_chat_phase 前必须先就绪）
         if self.gui and hasattr(self.gui, "warm_up"):
             self.gui.warm_up()
+        self._set_state("greeting", "晚上好")
         self._play_cached("greeting")
         self._transition_to(SleepState.CHAT)
 
@@ -338,7 +339,7 @@ class SleepFlow:
 
     def _run_transition(self):
         """播放过渡脚本，转入 AUDIO"""
-        self._set_state("idle", "准备放松")
+        self._set_state("greeting", "准备放松")
         self._play_cached("transition")
         self._transition_to(SleepState.AUDIO)
 
