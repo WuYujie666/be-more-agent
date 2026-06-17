@@ -11,6 +11,22 @@
 #  This project is a generic framework and includes no copyrighted assets.
 # =========================================================================
 
+"""本地离线语音助手主程序。
+
+一轮对话的数据流水线（全部在本机运行，不联网）：
+    麦克风 → VAD 断句录音 → whisper.cpp 语音转文字（STT）
+          → Ollama 大模型流式生成回复（LLM）
+          → sherpa/piper 文字转语音（TTS）→ 扬声器播放
+
+线程模型：
+    - 主线程：tkinter GUI（动画、状态文字、按键事件）。
+    - 后台主循环线程 safe_main_execution：串起「录音→识别→对话」一整轮。
+    - TTS 两级流水线线程 _synth_worker（合成）/ _play_worker（播放），
+      靠 tts_queue / audio_queue 解耦，使下一句在当前句播放时就提前合成。
+
+交互：Space 打断当前发言，Esc 切换全屏，Ctrl+Q / Exit 按钮退出并存档。
+"""
+
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
@@ -49,9 +65,16 @@ from prompts import SYSTEM_PROMPT
 # =========================================================================
 
 class BotGUI:
+    """助手的全部状态与行为：tkinter 界面 + 录音/识别/对话/合成播放流水线。
+
+    一个进程只创建一个实例，由 __main__ 启动。GUI 在主线程，重活
+    （录音、LLM、TTS）跑在后台线程，通过线程安全队列与 Event 协调。
+    """
+
     BG_WIDTH, BG_HEIGHT = 800, 480
 
     def __init__(self, master):
+        """搭好界面、加载历史与模型、起动后台主循环线程。"""
         self.master = master
         master.title("Pi Assistant")
         master.attributes('-fullscreen', True)
@@ -116,6 +139,7 @@ class BotGUI:
     # --- HELPERS ---
 
     def safe_exit(self):
+        """统一退出口：停音频、存对话历史、卸载模型、关窗口。可重入只执行一次。"""
         if self.exiting:
             return
         self.exiting = True
@@ -148,6 +172,7 @@ class BotGUI:
         self.master.attributes('-fullscreen', self.is_fullscreen)
 
     def toggle_hud_visibility(self, event=None):
+        """点击画面：在「只显示动画」和「显示文字/状态/退出按钮」之间切换。"""
         try:
             if self.response_text.winfo_ismapped():
                 self.response_text.place_forget()
@@ -160,6 +185,7 @@ class BotGUI:
         except tk.TclError: pass
 
     def handle_speaking_interrupt(self, event=None):
+        """Space 打断：思考/发言时立即清空两条队列、停掉播放，回到 IDLE。"""
         if self.current_state == BotStates.SPEAKING or self.current_state == BotStates.THINKING:
             self.interrupted.set()
             with self.tts_queue_lock:
@@ -174,6 +200,7 @@ class BotGUI:
             self.set_state(BotStates.IDLE, "Interrupted.")
 
     def load_animations(self):
+        """从 faces/<状态>/ 预加载各状态的 PNG 帧序列；缺帧时回退到 idle 或纯色占位。"""
         base_path = "faces"
         states = ["idle", "listening", "thinking", "speaking", "greeting", "sleep", "warmup"]
         for state in states:
@@ -192,6 +219,7 @@ class BotGUI:
                     self.animations[state].append(ImageTk.PhotoImage(blank))
 
     def update_animation(self):
+        """每 250ms 切到当前状态的下一帧，用 after 自我调度形成循环播放。"""
         frames = self.animations.get(self.current_state, []) or self.animations.get(BotStates.IDLE, [])
         if not frames:
             self.master.after(250, self.update_animation)
@@ -203,6 +231,7 @@ class BotGUI:
         self.master.after(250, self.update_animation)
 
     def set_state(self, state, msg=""):
+        """切换动画状态并更新底部状态栏文字；经 after 投递到 GUI 线程，可跨线程调用。"""
         def _update():
             if msg: print(f"[STATE] {state.upper()}: {msg}", flush=True)
             if self.current_state != state:
@@ -212,6 +241,7 @@ class BotGUI:
         self.master.after(0, _update)
 
     def append_to_text(self, text, newline=True):
+        """向对话框追加整段文字（用于整句，如 "YOU: ..."），跨线程安全。"""
         def _update():
             self.response_text.config(state=tk.NORMAL)
             if newline:
@@ -225,6 +255,7 @@ class BotGUI:
         self.master.after(0, _update)
 
     def _stream_to_text(self, chunk):
+        """把 LLM 流式吐出的小片段实时拼接到对话框，实现逐字显示。"""
         def update_text_stream():
             self.response_text.config(state=tk.NORMAL)
             self.response_text.insert(tk.END, chunk)
@@ -237,6 +268,8 @@ class BotGUI:
     # =========================================================================
 
     def safe_main_execution(self):
+        """后台主循环：预热 → 起动 TTS 流水线 → 反复「录音→识别→对话」直到退出。
+        整个循环包在 try 里，任何未预料异常都转成 ERROR 状态而非让线程静默崩掉。"""
         try:
             self.warm_up_logic()
             self.synth_thread = threading.Thread(target=self._synth_worker, daemon=True)
@@ -274,6 +307,7 @@ class BotGUI:
             self.set_state(BotStates.ERROR, f"Fatal Error: {str(e)[:40]}")
 
     def warm_up_logic(self):
+        """开机预热：先空跑一次 LLM 摊销首轮延迟，再播放开场问候（顺带预热 TTS）。"""
         self.set_state(BotStates.WARMUP, "Warming up brains...")
         # 不只是载入权重，还要把第1轮真实会话要用的 KV 前缀（system prompt + 历史）
         # 提前评估一遍，否则首轮 prompt-eval 会拖慢 LLM 首 Token（实测 ~16s）。
