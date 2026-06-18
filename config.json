@@ -21,7 +21,7 @@
   "story_prompt": "用户想听故事。可以讲一个温柔、适合睡前的短故事，长度可以比平时长一些（几句到一小段即可），讲完轻声收尾。",
   "input_device": null,
   "input_sample_rate": 44100,
-  "whisper_model": "ggml-base.bin",
+  "whisper_model": "ggml-small.bin",
   "whisper_lang": "zh",
   "whisper_prompt": "以下是普通话的句子。",
   "vad_aggressiveness": 3,
