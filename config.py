@@ -31,6 +31,7 @@ DEFAULT_CONFIG = {
     "input_sample_rate": None,
     "whisper_model": "ggml-base.en.bin",
     "whisper_lang": "en",
+    "whisper_prompt": "以下是普通话的句子。",   # 初始提示，偏置 whisper 输出简体中文
     # --- VAD（免手持续监听）---
     "vad_aggressiveness": 3,   # webrtcvad 灵敏度 0~3，越大越严格（越不易把噪声当人声）
     "vad_start_ms": 150,       # 连续多少毫秒判定为人声才算"开始说话"（防瞬时噪声误触发）
@@ -45,7 +46,7 @@ DEFAULT_CONFIG = {
     "relaxation_max_minutes": 45,              # 助眠音频最长播放分钟数，到点自动关机
     "summaries_file": "summaries.json",        # 每日一句话摘要存档
     "summary_recent_days": 2,                  # 开场时「昨天摘要」允许的最大天数
-    "transition_prompt": "用户已聊了较久或表达了睡意。请先用一句话简短回应用户这句话，再温柔收尾说今天聊了很多就到这里，然后一定要问用户想听哪种助眠声音——雨声、白噪音，还是轻音乐。不要出主意、不要解决问题。",
+    "transition_prompt": "用户已聊了较久或表达了睡意。请先用一句话简短回应用户这句话，再温柔收尾说今天聊了很多就到这里，然后一定要问用户想听白噪音还是轻音乐。不要出主意、不要解决问题。",
     "decline_audio_prompt": "用户还不想睡或不想听助眠声音。请先用一句温柔的话安抚，表示理解他现在还不太想睡；再说一句好好睡觉能帮身体恢复精力的好处；最后道一句晚安、祝好梦。",
     "goodnight_prompt": "请只说一句温柔的晚安、祝好梦。",
     "story_prompt": "用户想听故事。可以讲一个温柔、适合睡前的短故事，长度可以比平时长一些（几句到一小段即可），讲完轻声收尾。",
@@ -86,12 +87,11 @@ _YES_WORDS = ("好", "可以", "行", "嗯", "要", "想", "当然", "来吧", "
 # 想听故事的意图关键词（命中则允许本轮回复适当延长）
 _STORY_WORDS = ("讲故事", "讲个故事", "睡前故事", "故事", "讲一个", "讲一段")
 
-# LLM 回复里偷偷夹带的音频控制标签，例如 [AUDIO:rain] / [AUDIO:music]
+# LLM 回复里偷偷夹带的音频控制标签，例如 [AUDIO:white] / [AUDIO:music]
 _AUDIO_TAG_RE = re.compile(r"\[AUDIO:\s*(\w+)\s*\]", re.IGNORECASE)
 _TAG_TO_TYPE = {
-    "rain": "white_noise", "white": "white_noise", "white_noise": "white_noise",
-    "noise": "white_noise", "whitenoise": "white_noise",
-    "music": "music", "piano": "music", "song": "music",
+    "white": "white_noise",
+    "music": "music",
 }
 
 # 音频类型 → 询问句里用的中文名

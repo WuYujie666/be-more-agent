@@ -103,6 +103,7 @@ class BotGUI:
 
         self.permanent_memory = self.load_chat_history()
         self.session_memory = []
+        self.chat_user_texts = []   # 仅 CHAT 阶段的用户发言，供每日摘要取材
 
         # --- 睡前引导状态机 ---
         # phase: "chat"（聊天中）/ "ask_audio"（已问是否助眠，等是/否）/ "playing"（放助眠音频）
@@ -541,14 +542,16 @@ class BotGUI:
         print("Transcribing...", flush=True)
         whisper_model = CURRENT_CONFIG.get("whisper_model", "ggml-base.en.bin")
         whisper_lang  = CURRENT_CONFIG.get("whisper_lang", "en")
+        cmd = ["./whisper.cpp/build/bin/whisper-cli",
+               "-m", f"./whisper.cpp/models/{whisper_model}",
+               "-l", whisper_lang, "-t", "4", "-f", filename]
+        # 初始提示偏置：给一句简体示例，引导 whisper 输出简体而非繁体。
+        whisper_prompt = CURRENT_CONFIG.get("whisper_prompt", "以下是普通话的句子。")
+        if whisper_prompt:
+            cmd += ["--prompt", whisper_prompt]
         try:
             with timed_block("STT whisper-cli"):
-                result = subprocess.run(
-                    ["./whisper.cpp/build/bin/whisper-cli",
-                     "-m", f"./whisper.cpp/models/{whisper_model}",
-                     "-l", whisper_lang, "-t", "4", "-f", filename],
-                    capture_output=True, text=True
-                )
+                result = subprocess.run(cmd, capture_output=True, text=True)
             transcription_lines = result.stdout.strip().split('\n')
             if transcription_lines and transcription_lines[-1].strip():
                 last_line = transcription_lines[-1].strip()
@@ -569,6 +572,7 @@ class BotGUI:
         """CHAT 阶段一轮：更新轮次与音频类型，判断是否进入收尾过渡，再生成回复。
         触发过渡的条件：用户说了想睡/想结束的关键词，或聊满 max_chat_turns 轮。"""
         self.turn_count += 1
+        self.chat_user_texts.append(user_text)   # 只记 CHAT 阶段用户发言，供摘要取材
         self._stage(f"第 {self.turn_count} 轮对话：{user_text}")
 
         t, audio_word = match_audio_word(user_text)
@@ -597,9 +601,9 @@ class BotGUI:
             self.phase = "ask_audio"
 
     def handle_audio_answer(self, user_text):
-        """ASK_AUDIO 阶段：用户回答是否要听助眠音频。
-        答「不可以」则说睡觉的好处后仍照常播放；其余（含听不清）默认按愿意处理。
-        收尾句播完后异步生成今日摘要，再进入助眠音频播放。"""
+        """ASK_AUDIO 阶段：用户回答想听白噪音还是轻音乐。
+        拒绝则先安抚、说睡觉恢复精力的好处、再晚安，之后仍照常播放；
+        其余（含听不清）默认按愿意处理。收尾句播完后异步生成今日摘要，再进入助眠音频播放。"""
         t, audio_word = match_audio_word(user_text)
         if t:
             self.audio_type = t
@@ -986,12 +990,10 @@ class BotGUI:
         if self.summary_saved:
             return
         self.summary_saved = True   # 先占位，避免异步线程与 safe_exit 重复生成
-        turns = [m for m in self.session_memory if m.get("role") in ("user", "assistant")]
-        if not turns:
+        texts = [t for t in self.chat_user_texts if t.strip()]
+        if not texts:
             return
-        transcript = "\n".join(
-            ("用户：" if m["role"] == "user" else "机器人：") + m["content"] for m in turns
-        )
+        transcript = "\n".join(texts)
         try:
             resp = ollama.chat(
                 model=TEXT_MODEL,
