@@ -543,16 +543,27 @@ class BotGUI:
         print("Transcribing...", flush=True)
         whisper_model = CURRENT_CONFIG.get("whisper_model", "ggml-base.en.bin")
         whisper_lang  = CURRENT_CONFIG.get("whisper_lang", "en")
+        whisper_threads = CURRENT_CONFIG.get("whisper_threads", 4)
         cmd = ["./whisper.cpp/build/bin/whisper-cli",
                "-m", f"./whisper.cpp/models/{whisper_model}",
-               "-l", whisper_lang, "-t", "4", "-f", filename]
+               "-l", whisper_lang, "-t", str(whisper_threads), "-f", filename]
         # 初始提示偏置：给一句简体示例，引导 whisper 输出简体而非繁体。
         whisper_prompt = CURRENT_CONFIG.get("whisper_prompt", "以下是普通话的句子。")
         if whisper_prompt:
             cmd += ["--prompt", whisper_prompt]
+        whisper_debug = CURRENT_CONFIG.get("whisper_debug", False)
         try:
             with timed_block("STT whisper-cli"):
                 result = subprocess.run(cmd, capture_output=True, text=True)
+            # whisper-cli 把诊断信息（加载模型、检测语言、各阶段耗时、报错）都打到 stderr。
+            # 默认全部捕获不显示；调试时打开 whisper_debug 看完整输出定位问题。
+            if result.returncode != 0:
+                print(f"[whisper] WARNING: whisper-cli 退出码 {result.returncode}", flush=True)
+            if whisper_debug:
+                print(f"[whisper] cmd: {' '.join(cmd)}", flush=True)
+                print(f"[whisper] returncode: {result.returncode}", flush=True)
+                print(f"[whisper] --- stderr ---\n{result.stderr}", flush=True)
+                print(f"[whisper] --- stdout ---\n{result.stdout}", flush=True)
             transcription_lines = result.stdout.strip().split('\n')
             if transcription_lines and transcription_lines[-1].strip():
                 last_line = transcription_lines[-1].strip()

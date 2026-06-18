@@ -32,6 +32,8 @@ DEFAULT_CONFIG = {
     "whisper_model": "ggml-base.en.bin",
     "whisper_lang": "en",
     "whisper_prompt": "以下是普通话的句子。",   # 初始提示，偏置 whisper 输出简体中文
+    "whisper_threads": 4,      # whisper.cpp 推理线程数，建议设为物理核心数（树莓派 4/5 为 4）
+    "whisper_debug": False,    # 调试用：打印 whisper-cli 的 returncode/stderr/stdout 完整输出
     # --- VAD（免手持续监听）---
     "vad_aggressiveness": 3,   # webrtcvad 灵敏度 0~3，越大越严格（越不易把噪声当人声）
     "vad_start_ms": 150,       # 连续多少毫秒判定为人声才算"开始说话"（防瞬时噪声误触发）
