@@ -544,9 +544,15 @@ class BotGUI:
         whisper_model = CURRENT_CONFIG.get("whisper_model", "ggml-base.en.bin")
         whisper_lang  = CURRENT_CONFIG.get("whisper_lang", "en")
         whisper_threads = CURRENT_CONFIG.get("whisper_threads", 4)
+        # beam search / best-of：whisper-cli 默认 5/5，较慢；设为 1/1 即 greedy，
+        # 在树莓派上能省下大量解码时间，短句精度几乎不受影响。
+        whisper_beam_size = CURRENT_CONFIG.get("whisper_beam_size", 1)
+        whisper_best_of   = CURRENT_CONFIG.get("whisper_best_of", 1)
         cmd = ["./whisper.cpp/build/bin/whisper-cli",
                "-m", f"./whisper.cpp/models/{whisper_model}",
-               "-l", whisper_lang, "-t", str(whisper_threads), "-f", filename]
+               "-l", whisper_lang, "-t", str(whisper_threads),
+               "-bs", str(whisper_beam_size), "-bo", str(whisper_best_of),
+               "-f", filename]
         # 初始提示偏置：给一句简体示例，引导 whisper 输出简体而非繁体。
         whisper_prompt = CURRENT_CONFIG.get("whisper_prompt", "以下是普通话的句子。")
         if whisper_prompt:

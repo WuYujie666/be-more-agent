@@ -26,6 +26,8 @@
   "whisper_prompt": "以下是普通话的句子。",
   "whisper_threads": 4,
   "whisper_debug": true,
+  "whisper_beam_size": 1,
+  "whisper_best_of": 1,
   "vad_aggressiveness": 3,
   "vad_start_ms": 150,
   "vad_silence_ms": 900,
