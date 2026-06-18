@@ -56,7 +56,7 @@ import ollama
 from config import (
     INPUT_DEVICE_NAME, OLLAMA_OPTIONS, CURRENT_CONFIG, TEXT_MODEL,
     BotStates, timed_block, choose_input_samplerate,
-    SYSTEM_PROMPT, AUDIO_TYPE_LABELS,
+    SYSTEM_PROMPT,
     detect_story_intent, extract_audio_tag,
     match_audio_word, match_sleep_word, match_yesno_word,
     load_recent_summary, append_summary,
@@ -396,39 +396,31 @@ class BotGUI:
             self.set_state(BotStates.IDLE, f"Fatal Error: {str(e)[:40]}")
 
     def warm_up_logic(self):
-        """开机预热：用真实问候生成兼做预热，再播放这句自然问候（顺带预热 TTS）。"""
+        """开机预热：先空跑一次 LLM 摊销首轮延迟，再播放开场问候（顺带预热 TTS）。"""
         self.set_state(BotStates.WARMUP, "Warming up brains...")
-        # 用「生成开场问候」这一次真实 ollama.chat 兼做预热：不仅载入权重，还把第1轮
-        # 真实会话要用的 KV 前缀（system prompt + 历史）提前评估，否则首轮 prompt-eval
-        # 会拖慢 LLM 首 Token（实测 ~16s）。让 LLM 自然带过昨天的摘要，而非逐字念出。
-        summary = load_recent_summary()
-        if summary:
-            greeting_prompt = CURRENT_CONFIG.get(
-                "greeting_prompt", "").format(summary=summary)
-            fallback = "晚上好，我在。昨天你说" + summary + "。今天呢？"
-        else:
-            greeting_prompt = CURRENT_CONFIG.get("greeting_prompt_no_summary", "")
-            fallback = "你好，我在。今天过得怎么样？"
-
-        greeting = ""
+        # 不只是载入权重，还要把第1轮真实会话要用的 KV 前缀（system prompt + 历史）
+        # 提前评估一遍，否则首轮 prompt-eval 会拖慢 LLM 首 Token（实测 ~16s）。
+        # 跑一次真实 ollama.chat，丢弃输出、不写入 memory，让真实第1轮退化成"第2轮"速度。
         try:
-            with timed_block("LLM warmup (greeting)"):
-                resp = ollama.chat(
+            with timed_block("LLM warmup (prefix)"):
+                ollama.chat(
                     model=TEXT_MODEL,
-                    messages=self.permanent_memory + [
-                        {"role": "user", "content": greeting_prompt}
-                    ],
+                    messages=self.permanent_memory + [{"role": "user", "content": "你好"}],
                     stream=False,
                     options=OLLAMA_OPTIONS,
                     keep_alive=-1,
                 )
-            greeting, _ = extract_audio_tag(resp["message"]["content"])
-            greeting = re.sub(r'\[AUDIO:?\w*\]?', '', greeting).strip()
         except Exception as e:
             print(f"Failed to load {TEXT_MODEL}: {e}", flush=True)
 
-        if not greeting:
-            greeting = fallback   # 生成失败或为空时回退到写死句
+        # 开场问候用写死模板：晚上好 → 昨天做的事 → 今天有什么想分享的吗。
+        # 「昨天做的事」直接拼接每日摘要——摘要已在 finalize_session_summary 里存成
+        # 可念出的第二人称句（「你说……，你提到……，你想……」），无需现场再加工。
+        summary = load_recent_summary()
+        if summary:
+            greeting = "晚上好。昨天" + summary + "。今天有什么想分享的吗？"
+        else:
+            greeting = "晚上好。今天有什么想分享的吗？"
 
         self._stage("问候阶段" + ("（带昨日摘要）" if summary else "（无摘要）"))
         self.set_state(BotStates.GREETING, "晚上好")
@@ -594,8 +586,7 @@ class BotGUI:
                 self._stage(f"检测到睡意关键词「{sleep_word}」，进入睡前询问阶段")
             else:
                 self._stage(f"已聊满 {self.max_chat_turns} 轮，进入睡前询问阶段")
-            label = AUDIO_TYPE_LABELS.get(self.audio_type, "白噪音")
-            extra = CURRENT_CONFIG.get("transition_prompt", "").format(audio=label)
+            extra = CURRENT_CONFIG.get("transition_prompt", "")
         elif detect_story_intent(user_text):
             self._stage("检测到讲故事意图，放宽本轮回复长度")
             extra = CURRENT_CONFIG.get("story_prompt", "")
@@ -1005,7 +996,10 @@ class BotGUI:
             resp = ollama.chat(
                 model=TEXT_MODEL,
                 messages=[{"role": "user", "content":
-                           "把下面这段睡前对话压缩成一句话摘要，用第二人称、温柔简短，只输出这句话：\n"
+                           "把下面这段睡前对话提炼成一两句话，用第二人称直接陈述用户说了什么、"
+                           "提到什么、想做什么，写成可以直接念出来的句子"
+                           "（例如「你说……，你提到……，你想……」）。"
+                           "只输出这句话，不要加引号或任何前缀：\n"
                            + transcript}],
                 stream=False, options=OLLAMA_OPTIONS,
             )
