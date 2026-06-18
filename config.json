@@ -1,5 +1,5 @@
 {
-  "text_model": "gemma3:1b",
+  "text_model": "qwen2.5:1.5b",
   "voice_model": "piper/zh_CN-huayan-medium.onnx",
   "tts_engine": "sherpa",
   "sherpa_model_dir": "sherpa-models/vits-zh-aishell3",
