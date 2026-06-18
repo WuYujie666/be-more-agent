@@ -564,12 +564,20 @@ class BotGUI:
                 print(f"[whisper] returncode: {result.returncode}", flush=True)
                 print(f"[whisper] --- stderr ---\n{result.stderr}", flush=True)
                 print(f"[whisper] --- stdout ---\n{result.stdout}", flush=True)
-            transcription_lines = result.stdout.strip().split('\n')
-            if transcription_lines and transcription_lines[-1].strip():
-                last_line = transcription_lines[-1].strip()
-                if ']' in last_line: transcription = last_line.split("]")[1].strip()
-                else: transcription = last_line
-            else: transcription = ""
+            # whisper-cli 每个语音片段输出一行，形如：
+            #   [00:00:00.000 --> 00:00:06.800]  片段文本
+            # 一句话被切成多段时会有多行，必须把所有片段拼起来，
+            # 只取最后一行会丢掉前半句（曾导致"识别不准"）。
+            segments = []
+            for line in result.stdout.strip().split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+                # 去掉行首的 [时间戳] 前缀；没有前缀的行原样保留
+                seg = line.split("]", 1)[1].strip() if line.startswith("[") and "]" in line else line
+                if seg:
+                    segments.append(seg)
+            transcription = "".join(segments)
             print(f"Heard: '{transcription}'", flush=True)
             return transcription.strip()
         except Exception as e:
