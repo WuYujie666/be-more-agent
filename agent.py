@@ -54,10 +54,11 @@ import ollama
 # 1. 配置 / 提示词从内部模块导入
 # =========================================================================
 from config import (
-    MEMORY_FILE,
     INPUT_DEVICE_NAME, OLLAMA_OPTIONS, CURRENT_CONFIG, TEXT_MODEL,
     BotStates, timed_block, choose_input_samplerate,
-    SYSTEM_PROMPT,
+    SYSTEM_PROMPT, AUDIO_TYPE_LABELS,
+    detect_audio_type, detect_sleep_intent, detect_yes_no, extract_audio_tag,
+    load_recent_summary, append_summary,
 )
 
 # =========================================================================
@@ -101,6 +102,14 @@ class BotGUI:
 
         self.permanent_memory = self.load_chat_history()
         self.session_memory = []
+
+        # --- 睡前引导状态机 ---
+        # phase: "chat"（聊天中）/ "ask_audio"（已问是否助眠，等是/否）/ "playing"（放助眠音频）
+        self.phase = "chat"
+        self.turn_count = 0          # CHAT 阶段用户发言计数
+        self.audio_type = CURRENT_CONFIG.get("default_audio", "white_noise")
+        self.max_chat_turns = int(CURRENT_CONFIG.get("max_chat_turns", 5))
+        self.summary_saved = False   # 每日摘要幂等保护
 
         self.interrupted = threading.Event()
 
@@ -167,7 +176,8 @@ class BotGUI:
 
         self.tts_active.clear()
 
-        self.save_chat_history()
+        # 退出时把今天对话压成一句话摘要存档（幂等；不保留原始转录）
+        self.finalize_session_summary()
 
         try:
             ollama.generate(model=TEXT_MODEL, prompt="", keep_alive=0)
@@ -345,6 +355,12 @@ class BotGUI:
             while True:
                 if self.exiting:
                     break
+
+                # 播放助眠音频期间不再监听，等看门狗线程放完/超时后退出
+                if self.phase == "playing":
+                    time.sleep(0.5)
+                    continue
+
                 self.set_state(BotStates.LISTENING, "我在听…")
                 audio_file = self.record_voice_vad()
 
@@ -365,7 +381,10 @@ class BotGUI:
                 self.add_message("user", user_text)
                 self.interrupted.clear()
                 with timed_block("完整一轮对话"):
-                    self.chat_and_respond(user_text)
+                    if self.phase == "ask_audio":
+                        self.handle_audio_answer(user_text)
+                    else:
+                        self.handle_chat_turn(user_text)
 
         except Exception as e:
             traceback.print_exc()
@@ -392,7 +411,12 @@ class BotGUI:
         except Exception as e:
             print(f"Failed to load {TEXT_MODEL}: {e}", flush=True)
         self.set_state(BotStates.GREETING, "晚上好")
-        self.speak("你好，我在。今天过得怎么样？")
+        # 开场固定问候；若有近一两天的摘要，接一句「昨天你说…今天呢？」
+        summary = load_recent_summary()
+        if summary:
+            self.speak("晚上好，我在。昨天你说" + summary + "。今天呢？")
+        else:
+            self.speak("你好，我在。今天过得怎么样？")
         print("Models loaded.", flush=True)
 
     def record_voice_vad(self, filename="input.wav"):
@@ -531,26 +555,121 @@ class BotGUI:
     # 5. CHAT & RESPOND
     # =========================================================================
 
-    def chat_and_respond(self, text):
+    def handle_chat_turn(self, user_text):
+        """CHAT 阶段一轮：更新轮次与音频类型，判断是否进入收尾过渡，再生成回复。
+        触发过渡的条件：用户说了想睡/想结束的关键词，或聊满 max_chat_turns 轮。"""
+        self.turn_count += 1
+        t = detect_audio_type(user_text)
+        if t:
+            self.audio_type = t
+
+        transition = detect_sleep_intent(user_text) or self.turn_count >= self.max_chat_turns
+
+        extra = None
+        if transition:
+            label = AUDIO_TYPE_LABELS.get(self.audio_type, "白噪音")
+            extra = CURRENT_CONFIG.get("transition_prompt", "").format(audio=label)
+
+        self.chat_and_respond(user_text, extra_instruction=extra)
+
+        if transition:
+            self.phase = "ask_audio"
+
+    def handle_audio_answer(self, user_text):
+        """ASK_AUDIO 阶段：用户回答是否要听助眠音频。
+        答「不可以」则说睡觉的好处后仍照常播放；其余（含听不清）默认按愿意处理。
+        收尾句播完后异步生成今日摘要，再进入助眠音频播放。"""
+        t = detect_audio_type(user_text)
+        if t:
+            self.audio_type = t
+
+        if detect_yes_no(user_text) == "no":
+            extra = CURRENT_CONFIG.get("decline_audio_prompt", "")
+        else:
+            extra = CURRENT_CONFIG.get("goodnight_prompt", "")
+
+        self.chat_and_respond(user_text, extra_instruction=extra)
+
+        self.start_session_summary()   # 异步压缩今日对话，不阻塞助眠
+        self.phase = "playing"
+        self.start_relaxation_audio()
+
+    def _queue_sentence(self, sentence):
+        """把一句完整文本推进 TTS 队列（过滤掉没有可读字符的空句）。"""
+        s = sentence.strip()
+        if s and re.search(r'[\w一-鿿]', s):
+            with self.tts_queue_lock:
+                self.tts_queue.append(s)
+
+    def chat_and_respond(self, text, extra_instruction=None):
+        """流式生成一段回复：实时显示气泡、按句送 TTS，并剥掉 [AUDIO:x] 控制标签。
+        extra_instruction 作为系统提示拼到本轮 user 消息后（用于过渡/收尾指令）。
+        返回去掉标签后的完整回复文本。"""
         if "forget everything" in text.lower() or "reset memory" in text.lower() \
                 or "清空记忆" in text or "忘记一切" in text:
             self.session_memory = []
             self.permanent_memory = [{"role": "system", "content": SYSTEM_PROMPT}]
-            self.save_chat_history()
             with self.tts_queue_lock:
                 self.tts_queue.append("好的，我把记忆清空了。")
             self.set_state(BotStates.IDLE, "Memory Wiped")
-            return
+            return ""
 
         self.set_state(BotStates.THINKING, "Thinking...")
 
         lang = CURRENT_CONFIG.get("whisper_lang", "en")
         lang_hint = "请用中文回答。" if lang == "zh" else ""
-        user_msg = {"role": "user", "content": text + ("\n" + lang_hint if lang_hint else "")}
+        parts = [text]
+        if extra_instruction:
+            parts.append("[系统提示]" + extra_instruction)
+        if lang_hint:
+            parts.append(lang_hint)
+        user_msg = {"role": "user", "content": "\n".join(parts)}
         messages = self.permanent_memory + self.session_memory + [user_msg]
 
-        full_response_buffer = ""
-        sentence_buffer = ""
+        full_raw = ""          # LLM 原始输出（含标签），用于最终解析与记忆
+        pending = ""           # 显示缓冲：拦住可能跨 chunk 的 [AUDIO:x] 标签
+        sentence_buffer = ""   # 攒成整句再送 TTS
+        spoke = False
+        TAG_START = "[AUDIO:"
+        COMPLETE_TAG = re.compile(r'^\[AUDIO:\w+\]', re.IGNORECASE)
+
+        def emit(piece):
+            nonlocal sentence_buffer, spoke
+            if not piece:
+                return
+            if not spoke:
+                self.set_state(BotStates.SPEAKING, "Speaking...")
+                self.add_message("bot", "")
+                spoke = True
+            self.stream_to_bubble(piece)
+            sentence_buffer += piece
+            if any(p in piece for p in ".!?\n。！？"):
+                self._queue_sentence(sentence_buffer)
+                sentence_buffer = ""
+
+        def drain(final=False):
+            # 把 pending 里「确认安全」的文本送出去，遇到可能的 [AUDIO:x] 标签先拦住。
+            nonlocal pending
+            while pending:
+                i = pending.find('[')
+                if i == -1:
+                    emit(pending); pending = ""; return
+                if i > 0:
+                    emit(pending[:i]); pending = pending[i:]
+                m = COMPLETE_TAG.match(pending)
+                if m:
+                    _, tg = extract_audio_tag(m.group(0))
+                    if tg:
+                        self.audio_type = tg
+                    pending = pending[m.end():]; continue
+                looks_like_prefix = (TAG_START.startswith(pending[:len(TAG_START)])
+                                     or (pending.startswith(TAG_START) and ']' not in pending))
+                if final:
+                    if looks_like_prefix:
+                        pending = ""; return   # 收尾时丢掉被截断的标签残尾
+                elif looks_like_prefix:
+                    return                     # 可能是跨 chunk 的标签前缀，等后续 chunk
+                emit('['); pending = pending[1:]   # 只是个普通 '['
 
         try:
             stream = ollama.chat(model=TEXT_MODEL, messages=messages, stream=True, options=OLLAMA_OPTIONS)
@@ -564,31 +683,28 @@ class BotGUI:
                 if not _ttft_logged:
                     print(f"[TIMER] LLM 首Token延迟 {time.perf_counter()-_t_llm:.2f}s", flush=True)
                     _ttft_logged = True
-                full_response_buffer += content
+                full_raw += content
+                pending += content
+                drain()
 
-                if self.current_state != BotStates.SPEAKING:
-                    self.set_state(BotStates.SPEAKING, "Speaking...")
-                    self.add_message("bot", "")
+            drain(final=True)
+            if sentence_buffer.strip():
+                self._queue_sentence(sentence_buffer)
 
-                self.stream_to_bubble(content)
-
-                sentence_buffer += content
-                if any(punct in content for punct in ".!?\n。！？"):
-                    clean_sentence = sentence_buffer.strip()
-                    if clean_sentence and re.search(r'[\w一-鿿]', clean_sentence):
-                        with self.tts_queue_lock: self.tts_queue.append(clean_sentence)
-                    sentence_buffer = ""
-
-            if sentence_buffer.strip() and re.search(r'[\w一-鿿]', sentence_buffer):
-                with self.tts_queue_lock: self.tts_queue.append(sentence_buffer.strip())
-            self.session_memory.append({"role": "assistant", "content": full_response_buffer})
+            clean_full, tag_type = extract_audio_tag(full_raw)
+            clean_full = re.sub(r'\[AUDIO:?\w*\]?', '', clean_full).strip()
+            if tag_type:
+                self.audio_type = tag_type
+            self.session_memory.append({"role": "assistant", "content": clean_full})
 
             self.wait_for_tts()
             self.set_state(BotStates.IDLE, "Ready")
+            return clean_full
 
         except Exception as e:
             print(f"LLM Error: {e}")
             self.set_state(BotStates.IDLE, "Brain Freeze!")
+            return ""
 
     def wait_for_tts(self):
         # 两级都空闲才算"说完"：两个队列空，且合成/播放线程都不忙。
@@ -763,25 +879,110 @@ class BotGUI:
             finally:
                 self.current_volume = 0
 
-    def load_chat_history(self):
-        system_msg = {"role": "system", "content": SYSTEM_PROMPT}
-        if os.path.exists(MEMORY_FILE):
-            try:
-                with open(MEMORY_FILE, "r") as f:
-                    turns = json.load(f)
-                # memory.json 只存对话轮次，不存 system message
-                turns = [t for t in turns if t.get("role") != "system"]
-                return [system_msg] + turns
-            except: pass
-        return [system_msg]
+    # =========================================================================
+    # 6. 助眠音频 / 每日摘要
+    # =========================================================================
 
-    def save_chat_history(self):
-        full = self.permanent_memory + self.session_memory
-        # 只保存 user/assistant 轮次，system prompt 是配置不是历史
-        turns = [t for t in full if t.get("role") != "system"]
-        if len(turns) > 10: turns = turns[-10:]
-        with open(MEMORY_FILE, "w") as f:
-            json.dump(turns, f, indent=4)
+    def start_relaxation_audio(self):
+        """加载并播放一条助眠音频（白噪音/轻音乐），做音量平衡；
+        音频自然放完或满 relaxation_max_minutes 分钟后自动关机。"""
+        path = self._pick_relaxation_file()
+        if not path:
+            print("[RELAX] 未找到助眠音频，直接进入关机。", flush=True)
+            self.set_state(BotStates.SLEEP, "晚安")
+            self.safe_exit()
+            return
+        try:
+            samples, rate = self._load_wav(path)
+        except Exception as e:
+            print(f"[RELAX] 读取音频失败 {path}: {e}", flush=True)
+            self.safe_exit()
+            return
+        gain = float(CURRENT_CONFIG.get("relaxation_gain", 0.6))
+        samples = (samples * gain).astype(np.float32)
+        samples, rate = self._fit_samplerate(samples, rate)
+        self.set_state(BotStates.SLEEP, "晚安，好梦")
+        threading.Thread(target=self._relaxation_watchdog,
+                         args=(samples, rate, path), daemon=True).start()
+
+    def _pick_relaxation_file(self):
+        """从 sounds/relaxation/<audio_type>/ 取第一个 .wav；目录为空或不存在返回 None。"""
+        base = CURRENT_CONFIG.get("relaxation_audio_dir", "sounds/relaxation")
+        folder = os.path.join(base, self.audio_type)
+        if not os.path.isdir(folder):
+            return None
+        files = sorted(f for f in os.listdir(folder) if f.lower().endswith(".wav"))
+        return os.path.join(folder, files[0]) if files else None
+
+    def _load_wav(self, path):
+        """读取 16-bit PCM wav → (float32 [-1,1] 单声道, 采样率)。"""
+        with wave.open(path, "rb") as wf:
+            rate = wf.getframerate()
+            n_ch = wf.getnchannels()
+            raw = wf.readframes(wf.getnframes())
+        samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+        if n_ch > 1:
+            samples = samples.reshape(-1, n_ch).mean(axis=1)   # 混成单声道
+        return samples, rate
+
+    def _relaxation_watchdog(self, samples, rate, path):
+        """后台播放助眠音频并看门：到时间上限或自然放完即停止并关机。"""
+        max_minutes = float(CURRENT_CONFIG.get("relaxation_max_minutes", 45))
+        deadline = time.time() + max_minutes * 60
+        print(f"[RELAX] 播放 {path}，上限 {max_minutes} 分钟。", flush=True)
+        try:
+            sd.play(samples, rate)
+            while not self.exiting:
+                if time.time() >= deadline:
+                    print("[RELAX] 到达时间上限，停止。", flush=True)
+                    sd.stop()
+                    break
+                try:
+                    st = sd.get_stream()
+                    if st is None or not st.active:
+                        print("[RELAX] 音频自然放完。", flush=True)
+                        break
+                except Exception:
+                    break
+                time.sleep(0.5)
+        except Exception as e:
+            print(f"[RELAX] 播放出错: {e}", flush=True)
+        self.safe_exit()
+
+    def start_session_summary(self):
+        """后台线程把今天对话压成一句话摘要，不阻塞助眠流程。"""
+        threading.Thread(target=self.finalize_session_summary, daemon=True).start()
+
+    def finalize_session_summary(self):
+        """把今日对话压成一句话摘要并存档（幂等）。原始转录不保留。"""
+        if self.summary_saved:
+            return
+        self.summary_saved = True   # 先占位，避免异步线程与 safe_exit 重复生成
+        turns = [m for m in self.session_memory if m.get("role") in ("user", "assistant")]
+        if not turns:
+            return
+        transcript = "\n".join(
+            ("用户：" if m["role"] == "user" else "机器人：") + m["content"] for m in turns
+        )
+        try:
+            resp = ollama.chat(
+                model=TEXT_MODEL,
+                messages=[{"role": "user", "content":
+                           "把下面这段睡前对话压缩成一句话摘要，用第二人称、温柔简短，只输出这句话：\n"
+                           + transcript}],
+                stream=False, options=OLLAMA_OPTIONS,
+            )
+            summary, _ = extract_audio_tag(resp["message"]["content"])
+            summary = summary.strip().replace("\n", " ")
+            if summary:
+                append_summary(summary)
+                print(f"[SUMMARY] saved: {summary}", flush=True)
+        except Exception as e:
+            print(f"[SUMMARY] generate failed: {e}", flush=True)
+
+    def load_chat_history(self):
+        """跨会话不再回灌原始转录；仅以系统 prompt 起步，连续性靠每日摘要。"""
+        return [{"role": "system", "content": SYSTEM_PROMPT}]
 
 if __name__ == "__main__":
     print("--- SYSTEM STARTING ---", flush=True)

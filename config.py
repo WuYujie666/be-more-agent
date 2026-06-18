@@ -3,8 +3,10 @@
 # =========================================================================
 
 import os
+import re
 import json
 import time
+import datetime
 import contextlib
 
 import sounddevice as sd
@@ -35,6 +37,17 @@ DEFAULT_CONFIG = {
     "vad_silence_ms": 900,     # 尾部静音多久判定"说完"
     "vad_max_record_ms": 30000,# 单次最长录音
     "vad_preroll_ms": 300,     # 起始前回看缓冲，避免吞掉第一个字
+    # --- 睡前引导 / 放松音频 ---
+    "max_chat_turns": 5,                       # 聊满几轮后主动收尾过渡
+    "default_audio": "white_noise",            # 默认助眠音频类型：white_noise / music
+    "relaxation_audio_dir": "sounds/relaxation",  # 放松音频根目录（下分 white_noise/ 和 music/）
+    "relaxation_gain": 0.6,                     # 助眠音频音量（相对 TTS 满音量），做音量平衡
+    "relaxation_max_minutes": 45,              # 助眠音频最长播放分钟数，到点自动关机
+    "summaries_file": "summaries.json",        # 每日一句话摘要存档
+    "summary_recent_days": 2,                  # 开场时「昨天摘要」允许的最大天数
+    "transition_prompt": "用户已聊了较久或表达了睡意。请先用一句话简短回应用户这句话，再温柔收尾说今天聊了很多就到这里，然后问一句想不想听{audio}助眠。不要出主意、不要解决问题。",
+    "decline_audio_prompt": "用户不想听助眠音频。请用一句话温柔说说好好睡觉的好处，再祝好梦。",
+    "goodnight_prompt": "请只说一句温柔的晚安、祝好梦。",
 }
 
 # LLM SETTINGS
@@ -55,6 +68,111 @@ def timed_block(label):
         yield
     finally:
         print(f"[TIMER] <<< {label}  {time.perf_counter()-t0:.2f}s", flush=True)
+
+
+# =========================================================================
+# 1b. 睡前引导：关键词识别 / 标签解析 / 摘要存取（纯函数，便于单测）
+# =========================================================================
+
+# 音频类型识别用的关键词
+_WHITE_NOISE_WORDS = ("白噪", "白噪音", "雨声", "下雨", "雨", "海浪", "海", "风声", "流水", "溪")
+_MUSIC_WORDS = ("轻音乐", "音乐", "钢琴", "旋律", "曲子", "乐曲")
+# 想结束 / 想睡的意图关键词
+_SLEEP_WORDS = ("睡", "困", "晚安", "累了", "不聊了", "不想聊", "结束", "休息", "睡觉", "该睡")
+# 应答里的否定 / 肯定关键词（先判否定，避免「不想」「不要」被当成肯定）
+_NO_WORDS = ("不", "别", "算了", "无所谓")
+_YES_WORDS = ("好", "可以", "行", "嗯", "要", "想", "当然", "来吧", "OK", "ok", "play")
+
+# LLM 回复里偷偷夹带的音频控制标签，例如 [AUDIO:rain] / [AUDIO:music]
+_AUDIO_TAG_RE = re.compile(r"\[AUDIO:\s*(\w+)\s*\]", re.IGNORECASE)
+_TAG_TO_TYPE = {
+    "rain": "white_noise", "white": "white_noise", "white_noise": "white_noise",
+    "noise": "white_noise", "whitenoise": "white_noise",
+    "music": "music", "piano": "music", "song": "music",
+}
+
+# 音频类型 → 询问句里用的中文名
+AUDIO_TYPE_LABELS = {"white_noise": "白噪音", "music": "轻音乐"}
+
+
+def detect_audio_type(text):
+    """从用户文本里识别想要的助眠音频类型；命中返回 'white_noise'/'music'，否则 None。"""
+    if not text:
+        return None
+    # 先判轻音乐（'白噪音' 不含 '音乐'，两类关键词不冲突）
+    if any(w in text for w in _MUSIC_WORDS):
+        return "music"
+    if any(w in text for w in _WHITE_NOISE_WORDS):
+        return "white_noise"
+    return None
+
+
+def detect_sleep_intent(text):
+    """用户是否表达了想结束对话 / 想睡的意图。"""
+    if not text:
+        return False
+    return any(w in text for w in _SLEEP_WORDS)
+
+
+def detect_yes_no(text):
+    """识别是否答应听助眠音频：'yes' / 'no' / None（无法判断）。先判否定。"""
+    if not text:
+        return None
+    if any(w in text for w in _NO_WORDS):
+        return "no"
+    if any(w in text for w in _YES_WORDS):
+        return "yes"
+    return None
+
+
+def extract_audio_tag(text):
+    """剥掉 LLM 回复里的 [AUDIO:x] 控制标签，返回 (clean_text, audio_type 或 None)。"""
+    if not text:
+        return text, None
+    audio_type = None
+    for m in _AUDIO_TAG_RE.finditer(text):
+        mapped = _TAG_TO_TYPE.get(m.group(1).lower())
+        if mapped:
+            audio_type = mapped
+    clean = _AUDIO_TAG_RE.sub("", text)
+    return clean, audio_type
+
+
+def load_recent_summary(summaries_file=None, recent_days=None):
+    """读取最近一条每日摘要：日期距今 ≤ recent_days 天则返回摘要文本，否则 None。"""
+    summaries_file = summaries_file or CURRENT_CONFIG.get("summaries_file", "summaries.json")
+    recent_days = recent_days if recent_days is not None \
+        else CURRENT_CONFIG.get("summary_recent_days", 2)
+    if not os.path.exists(summaries_file):
+        return None
+    try:
+        with open(summaries_file, "r", encoding="utf-8") as f:
+            items = json.load(f)
+        if not items:
+            return None
+        last = items[-1]
+        d = datetime.date.fromisoformat(last["date"])
+        if (datetime.date.today() - d).days <= recent_days:
+            return last.get("summary") or None
+    except Exception as e:
+        print(f"[SUMMARY] load failed: {e}", flush=True)
+    return None
+
+
+def append_summary(summary, summaries_file=None, keep=5):
+    """把一条带当天日期的摘要追加进存档，只保留最近 keep 条。"""
+    summaries_file = summaries_file or CURRENT_CONFIG.get("summaries_file", "summaries.json")
+    items = []
+    if os.path.exists(summaries_file):
+        try:
+            with open(summaries_file, "r", encoding="utf-8") as f:
+                items = json.load(f)
+        except Exception:
+            items = []
+    items.append({"date": datetime.date.today().isoformat(), "summary": summary})
+    items = items[-keep:]
+    with open(summaries_file, "w", encoding="utf-8") as f:
+        json.dump(items, f, ensure_ascii=False, indent=2)
 
 
 def load_config():

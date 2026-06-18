@@ -1,8 +1,9 @@
 import re
-<<<<<<< HEAD
-=======
 import json
->>>>>>> 1f88e85856a3fcf12e037e6633a5cf6ee5113ada
+
+from config import (
+    detect_audio_type, detect_sleep_intent, detect_yes_no, extract_audio_tag,
+)
 
 
 # --- 测试1：中文 bug ---
@@ -39,3 +40,43 @@ def test_action_json_parse():
     data = json.loads(text)
     assert data["action"] == "get_time"
     assert data["value"]  == "now"
+
+
+# --- 测试5：音频类型识别（关键词为主）---
+def test_detect_audio_type():
+    assert detect_audio_type("我想听雨声") == "white_noise"
+    assert detect_audio_type("放点白噪音吧") == "white_noise"
+    assert detect_audio_type("来点轻音乐") == "music"
+    assert detect_audio_type("钢琴曲也行") == "music"
+    assert detect_audio_type("今天好累") is None
+
+
+# --- 测试6：睡意 / 结束意图识别 ---
+def test_detect_sleep_intent():
+    assert detect_sleep_intent("我困了")
+    assert detect_sleep_intent("晚安")
+    assert detect_sleep_intent("不聊了")
+    assert not detect_sleep_intent("今天工作很顺利")
+
+
+# --- 测试7：是否应答（先判否定，避免「不想」被当成肯定）---
+def test_detect_yes_no():
+    assert detect_yes_no("可以啊") == "yes"
+    assert detect_yes_no("好的") == "yes"
+    assert detect_yes_no("不用了") == "no"
+    assert detect_yes_no("不想听") == "no"
+    assert detect_yes_no("嗯嗯") == "yes"
+    assert detect_yes_no("天气怎么样") is None
+
+
+# --- 测试8：剥离 [AUDIO:x] 控制标签，不读出来 ---
+def test_extract_audio_tag():
+    clean, t = extract_audio_tag("好的，这就给你放 [AUDIO:music]")
+    assert t == "music"
+    assert "[AUDIO" not in clean
+    clean, t = extract_audio_tag("下雨的声音很好听 [AUDIO:rain]")
+    assert t == "white_noise"
+    assert "[AUDIO" not in clean
+    clean, t = extract_audio_tag("今晚聊得很舒服")
+    assert t is None
+    assert clean == "今晚聊得很舒服"
