@@ -352,6 +352,7 @@ class BotGUI:
         """后台主循环：预热 → 起动 TTS 流水线 → 反复「录音→识别→对话」直到退出。
         整个循环包在 try 里，任何未预料异常都转成 ERROR 状态而非让线程静默崩掉。"""
         try:
+            self.play_startup_sound()
             self.warm_up_logic()
             self.synth_thread = threading.Thread(target=self._synth_worker, daemon=True)
             self.synth_thread.start()
@@ -887,6 +888,24 @@ class BotGUI:
                 return None
 
     # --- 播放阶段：消费已渲染的音频缓冲 ---
+
+    def play_startup_sound(self):
+        """开机音效：放一段固定的 wav（连接提示音）。缺文件/出错都静默跳过，
+        绝不阻断开机流程。同步播放（sd.wait），紧接着的 LLM 预热不放音频，不抢设备。"""
+        path = CURRENT_CONFIG.get(
+            "startup_sound", "sounds/start/connection-sound-for-software.wav")
+        if not os.path.isfile(path):
+            return
+        try:
+            samples, rate = self._load_wav(path)
+            gain = float(CURRENT_CONFIG.get("startup_gain", 0.8))
+            samples = (samples * gain).astype(np.float32)
+            samples, rate = self._fit_samplerate(samples, rate)
+            self._stage(f"开机音效：{path}")
+            sd.play(samples, rate)
+            sd.wait()
+        except Exception as e:
+            print(f"[STARTUP SOUND] 播放失败 {path}: {e}", flush=True)
 
     def _play_samples(self, samples, rate):
         with timed_block(f"TTS play [{rate}Hz {len(samples)}smp]"):
