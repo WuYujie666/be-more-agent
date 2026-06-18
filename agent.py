@@ -57,7 +57,8 @@ from config import (
     INPUT_DEVICE_NAME, OLLAMA_OPTIONS, CURRENT_CONFIG, TEXT_MODEL,
     BotStates, timed_block, choose_input_samplerate,
     SYSTEM_PROMPT, AUDIO_TYPE_LABELS,
-    detect_audio_type, detect_sleep_intent, detect_yes_no, extract_audio_tag,
+    detect_story_intent, extract_audio_tag,
+    match_audio_word, match_sleep_word, match_yesno_word,
     load_recent_summary, append_summary,
 )
 
@@ -283,6 +284,10 @@ class BotGUI:
             if msg: self.status_var.set(msg)
         self.master.after(0, _update)
 
+    def _stage(self, msg):
+        """打印睡前引导流程的阶段调试信息，便于跟踪走到了哪一步。"""
+        print(f"[STAGE] {msg}", flush=True)
+
     def add_message(self, role, text):
         """新增一条聊天气泡。role='user'（右对齐黄底）或 'bot'（左对齐灰底）。
         bot 气泡会记下其 StringVar，供 stream_to_bubble 逐字追加。跨线程安全。"""
@@ -391,32 +396,45 @@ class BotGUI:
             self.set_state(BotStates.IDLE, f"Fatal Error: {str(e)[:40]}")
 
     def warm_up_logic(self):
-        """开机预热：先空跑一次 LLM 摊销首轮延迟，再播放开场问候（顺带预热 TTS）。"""
+        """开机预热：用真实问候生成兼做预热，再播放这句自然问候（顺带预热 TTS）。"""
         self.set_state(BotStates.WARMUP, "Warming up brains...")
-        # 不只是载入权重，还要把第1轮真实会话要用的 KV 前缀（system prompt + 历史）
-        # 提前评估一遍，否则首轮 prompt-eval 会拖慢 LLM 首 Token（实测 ~16s）。
-        # 跑一次真实 ollama.chat，丢弃输出、不写入 memory，让真实第1轮退化成"第2轮"速度。
+        # 用「生成开场问候」这一次真实 ollama.chat 兼做预热：不仅载入权重，还把第1轮
+        # 真实会话要用的 KV 前缀（system prompt + 历史）提前评估，否则首轮 prompt-eval
+        # 会拖慢 LLM 首 Token（实测 ~16s）。让 LLM 自然带过昨天的摘要，而非逐字念出。
+        summary = load_recent_summary()
+        if summary:
+            greeting_prompt = CURRENT_CONFIG.get(
+                "greeting_prompt", "").format(summary=summary)
+            fallback = "晚上好，我在。昨天你说" + summary + "。今天呢？"
+        else:
+            greeting_prompt = CURRENT_CONFIG.get("greeting_prompt_no_summary", "")
+            fallback = "你好，我在。今天过得怎么样？"
+
+        greeting = ""
         try:
-            with timed_block("LLM warmup (prefix)"):
-                warmup_messages = self.permanent_memory + [
-                    {"role": "user", "content": "你好"}
-                ]
-                ollama.chat(
+            with timed_block("LLM warmup (greeting)"):
+                resp = ollama.chat(
                     model=TEXT_MODEL,
-                    messages=warmup_messages,
+                    messages=self.permanent_memory + [
+                        {"role": "user", "content": greeting_prompt}
+                    ],
                     stream=False,
                     options=OLLAMA_OPTIONS,
                     keep_alive=-1,
                 )
+            greeting, _ = extract_audio_tag(resp["message"]["content"])
+            greeting = re.sub(r'\[AUDIO:?\w*\]?', '', greeting).strip()
         except Exception as e:
             print(f"Failed to load {TEXT_MODEL}: {e}", flush=True)
+
+        if not greeting:
+            greeting = fallback   # 生成失败或为空时回退到写死句
+
+        self._stage("问候阶段" + ("（带昨日摘要）" if summary else "（无摘要）"))
         self.set_state(BotStates.GREETING, "晚上好")
-        # 开场固定问候；若有近一两天的摘要，接一句「昨天你说…今天呢？」
-        summary = load_recent_summary()
-        if summary:
-            self.speak("晚上好，我在。昨天你说" + summary + "。今天呢？")
-        else:
-            self.speak("你好，我在。今天过得怎么样？")
+        self.speak(greeting)
+        # 把问候作为 assistant 消息存入会话记忆，让后续对话上下文连贯。
+        self.session_memory.append({"role": "assistant", "content": greeting})
         print("Models loaded.", flush=True)
 
     def record_voice_vad(self, filename="input.wav"):
@@ -559,16 +577,28 @@ class BotGUI:
         """CHAT 阶段一轮：更新轮次与音频类型，判断是否进入收尾过渡，再生成回复。
         触发过渡的条件：用户说了想睡/想结束的关键词，或聊满 max_chat_turns 轮。"""
         self.turn_count += 1
-        t = detect_audio_type(user_text)
+        self._stage(f"第 {self.turn_count} 轮对话：{user_text}")
+
+        t, audio_word = match_audio_word(user_text)
         if t:
             self.audio_type = t
+            self._stage(f"检测到助眠类型关键词「{audio_word}」→ {t}")
 
-        transition = detect_sleep_intent(user_text) or self.turn_count >= self.max_chat_turns
+        sleep_word = match_sleep_word(user_text)
+        turns_reached = self.turn_count >= self.max_chat_turns
+        transition = bool(sleep_word) or turns_reached
 
         extra = None
         if transition:
+            if sleep_word:
+                self._stage(f"检测到睡意关键词「{sleep_word}」，进入睡前询问阶段")
+            else:
+                self._stage(f"已聊满 {self.max_chat_turns} 轮，进入睡前询问阶段")
             label = AUDIO_TYPE_LABELS.get(self.audio_type, "白噪音")
             extra = CURRENT_CONFIG.get("transition_prompt", "").format(audio=label)
+        elif detect_story_intent(user_text):
+            self._stage("检测到讲故事意图，放宽本轮回复长度")
+            extra = CURRENT_CONFIG.get("story_prompt", "")
 
         self.chat_and_respond(user_text, extra_instruction=extra)
 
@@ -579,13 +609,18 @@ class BotGUI:
         """ASK_AUDIO 阶段：用户回答是否要听助眠音频。
         答「不可以」则说睡觉的好处后仍照常播放；其余（含听不清）默认按愿意处理。
         收尾句播完后异步生成今日摘要，再进入助眠音频播放。"""
-        t = detect_audio_type(user_text)
+        t, audio_word = match_audio_word(user_text)
         if t:
             self.audio_type = t
+            self._stage(f"检测到助眠类型关键词「{audio_word}」→ {t}")
 
-        if detect_yes_no(user_text) == "no":
+        decision, yesno_word = match_yesno_word(user_text)
+        if decision == "no":
+            self._stage(f"睡前询问应答：命中「{yesno_word}」→ 拒绝助眠")
             extra = CURRENT_CONFIG.get("decline_audio_prompt", "")
         else:
+            hit = f"命中「{yesno_word}」" if yesno_word else "听不清/默认"
+            self._stage(f"睡前询问应答：{hit} → 接受助眠")
             extra = CURRENT_CONFIG.get("goodnight_prompt", "")
 
         self.chat_and_respond(user_text, extra_instruction=extra)
@@ -888,10 +923,12 @@ class BotGUI:
         音频自然放完或满 relaxation_max_minutes 分钟后自动关机。"""
         path = self._pick_relaxation_file()
         if not path:
+            self._stage(f"助眠音频决定：类型={self.audio_type}，但未找到对应音频文件")
             print("[RELAX] 未找到助眠音频，直接进入关机。", flush=True)
             self.set_state(BotStates.SLEEP, "晚安")
             self.safe_exit()
             return
+        self._stage(f"助眠音频决定：类型={self.audio_type}，文件={path}")
         try:
             samples, rate = self._load_wav(path)
         except Exception as e:

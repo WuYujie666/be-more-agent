@@ -48,6 +48,9 @@ DEFAULT_CONFIG = {
     "transition_prompt": "用户已聊了较久或表达了睡意。请先用一句话简短回应用户这句话，再温柔收尾说今天聊了很多就到这里，然后问一句想不想听{audio}助眠。不要出主意、不要解决问题。",
     "decline_audio_prompt": "用户不想听助眠音频。请用一句话温柔说说好好睡觉的好处，再祝好梦。",
     "goodnight_prompt": "请只说一句温柔的晚安、祝好梦。",
+    "greeting_prompt": "现在是睡前，新一次对话开始。请用一两句温和简短的话问候用户，自然地稍微提一下昨天的事（{summary}），不要原样复述，然后轻轻问一句今天过得怎么样。只输出这句问候。",
+    "greeting_prompt_no_summary": "现在是睡前，新一次对话开始。请用一句温和简短的话问候用户，轻轻问一句今天过得怎么样。只输出这句问候。",
+    "story_prompt": "用户想听故事。可以讲一个温柔、适合睡前的短故事，长度可以比平时长一些（几句到一小段即可），讲完轻声收尾。",
 }
 
 # LLM SETTINGS
@@ -82,6 +85,8 @@ _SLEEP_WORDS = ("睡", "困", "晚安", "累了", "不聊了", "不想聊", "结
 # 应答里的否定 / 肯定关键词（先判否定，避免「不想」「不要」被当成肯定）
 _NO_WORDS = ("不", "别", "算了", "无所谓")
 _YES_WORDS = ("好", "可以", "行", "嗯", "要", "想", "当然", "来吧", "OK", "ok", "play")
+# 想听故事的意图关键词（命中则允许本轮回复适当延长）
+_STORY_WORDS = ("讲故事", "讲个故事", "睡前故事", "故事", "讲一个", "讲一段")
 
 # LLM 回复里偷偷夹带的音频控制标签，例如 [AUDIO:rain] / [AUDIO:music]
 _AUDIO_TAG_RE = re.compile(r"\[AUDIO:\s*(\w+)\s*\]", re.IGNORECASE)
@@ -95,34 +100,64 @@ _TAG_TO_TYPE = {
 AUDIO_TYPE_LABELS = {"white_noise": "白噪音", "music": "轻音乐"}
 
 
+def _first_hit(text, words):
+    """返回 text 中命中的第一个关键词，没命中返回 None。"""
+    for w in words:
+        if w in text:
+            return w
+    return None
+
+
+def match_audio_word(text):
+    """识别助眠音频类型；命中返回 (type, 命中词)，否则 (None, None)。"""
+    if not text:
+        return None, None
+    # 先判轻音乐（'白噪音' 不含 '音乐'，两类关键词不冲突）
+    w = _first_hit(text, _MUSIC_WORDS)
+    if w:
+        return "music", w
+    w = _first_hit(text, _WHITE_NOISE_WORDS)
+    if w:
+        return "white_noise", w
+    return None, None
+
+
+def match_sleep_word(text):
+    """返回命中的睡意 / 想结束关键词，没命中返回 None。"""
+    return _first_hit(text, _SLEEP_WORDS) if text else None
+
+
+def match_yesno_word(text):
+    """识别是否答应听助眠音频：返回 (decision, 命中词)；先判否定，无法判断返回 (None, None)。"""
+    if not text:
+        return None, None
+    w = _first_hit(text, _NO_WORDS)
+    if w:
+        return "no", w
+    w = _first_hit(text, _YES_WORDS)
+    if w:
+        return "yes", w
+    return None, None
+
+
 def detect_audio_type(text):
     """从用户文本里识别想要的助眠音频类型；命中返回 'white_noise'/'music'，否则 None。"""
-    if not text:
-        return None
-    # 先判轻音乐（'白噪音' 不含 '音乐'，两类关键词不冲突）
-    if any(w in text for w in _MUSIC_WORDS):
-        return "music"
-    if any(w in text for w in _WHITE_NOISE_WORDS):
-        return "white_noise"
-    return None
+    return match_audio_word(text)[0]
 
 
 def detect_sleep_intent(text):
     """用户是否表达了想结束对话 / 想睡的意图。"""
-    if not text:
-        return False
-    return any(w in text for w in _SLEEP_WORDS)
+    return match_sleep_word(text) is not None
 
 
 def detect_yes_no(text):
     """识别是否答应听助眠音频：'yes' / 'no' / None（无法判断）。先判否定。"""
-    if not text:
-        return None
-    if any(w in text for w in _NO_WORDS):
-        return "no"
-    if any(w in text for w in _YES_WORDS):
-        return "yes"
-    return None
+    return match_yesno_word(text)[0]
+
+
+def detect_story_intent(text):
+    """用户是否想听故事（命中则允许本轮回复适当延长）。"""
+    return _first_hit(text, _STORY_WORDS) is not None if text else False
 
 
 def extract_audio_tag(text):
