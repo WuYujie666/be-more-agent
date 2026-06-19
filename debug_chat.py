@@ -55,6 +55,12 @@ class ConsoleIO:
         print(f"\n  [助眠] 此处会播放：{audio_type}（控制台模式不实际播放）", flush=True)
 
 
+def _greet(engine):
+    """开场问候：和住应用一致，先载入每日摘要念出问候，并存入会话记忆。"""
+    greeting, _ = engine.build_greeting()
+    print(f"机器人: {greeting}", flush=True)
+
+
 def _dispatch(engine, user_text):
     """喂一轮用户输入，打印分隔与回复。"""
     print(f"\n用户: {user_text}", flush=True)
@@ -65,6 +71,7 @@ def _dispatch(engine, user_text):
 def run_interactive(engine):
     print("=== 文字对话调试（交互模式）===")
     print("直接打字回车发送；空行或 quit/exit/q 结束。\n", flush=True)
+    _greet(engine)
     while True:
         if engine.phase == "playing":
             print("[已进入助眠播放阶段，对话结束]", flush=True)
@@ -82,6 +89,7 @@ def run_interactive(engine):
 
 def run_script(engine, path):
     print(f"=== 文字对话调试（脚本模式：{path}）===\n", flush=True)
+    _greet(engine)
     with open(path, encoding="utf-8") as f:
         lines = [ln.strip() for ln in f
                  if ln.strip() and not ln.lstrip().startswith("#")]

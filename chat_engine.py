@@ -30,7 +30,7 @@ from config import (
     CURRENT_CONFIG, OLLAMA_OPTIONS, TEXT_MODEL, BotStates, SYSTEM_PROMPT,
     detect_story_intent, extract_audio_tag,
     match_audio_word, match_sleep_word, match_yesno_word,
-    append_summary,
+    append_summary, load_recent_summary,
 )
 
 
@@ -279,3 +279,16 @@ class ChatEngine:
     def load_chat_history(self):
         """跨会话不再回灌原始转录；仅以系统 prompt 起步，连续性靠每日摘要。"""
         return [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    def build_greeting(self):
+        """开场问候：晚上好 →（昨天做的事＝每日摘要）→ 今天有什么想分享的吗。
+        「昨天做的事」直接拼接摘要——摘要已存成可念出的第二人称句，无需再加工。
+        问候作为 assistant 消息存入会话记忆，让后续对话上下文连贯。
+        返回 (greeting, has_summary)，调用方负责念出/打印。"""
+        summary = load_recent_summary()
+        if summary:
+            greeting = "晚上好。昨天" + summary + "。今天有什么想分享的吗？"
+        else:
+            greeting = "晚上好。今天有什么想分享的吗？"
+        self.session_memory.append({"role": "assistant", "content": greeting})
+        return greeting, bool(summary)

@@ -56,7 +56,6 @@ import ollama
 from config import (
     INPUT_DEVICE_NAME, OLLAMA_OPTIONS, CURRENT_CONFIG, TEXT_MODEL,
     BotStates, timed_block, choose_input_samplerate,
-    load_recent_summary,
 )
 from chat_engine import ChatEngine
 
@@ -436,20 +435,11 @@ class BotGUI:
         except Exception as e:
             print(f"Failed to load {TEXT_MODEL}: {e}", flush=True)
 
-        # 开场问候用写死模板：晚上好 → 昨天做的事 → 今天有什么想分享的吗。
-        # 「昨天做的事」直接拼接每日摘要——摘要已在 finalize_session_summary 里存成
-        # 可念出的第二人称句（「你说……，你提到……，你想……」），无需现场再加工。
-        summary = load_recent_summary()
-        if summary:
-            greeting = "晚上好。昨天" + summary + "。今天有什么想分享的吗？"
-        else:
-            greeting = "晚上好。今天有什么想分享的吗？"
-
-        self._stage("问候阶段" + ("（带昨日摘要）" if summary else "（无摘要）"))
+        # 开场问候（载入每日摘要、拼成可念出的句子、存入会话记忆）统一在 engine 里。
+        greeting, has_summary = self.engine.build_greeting()
+        self._stage("问候阶段" + ("（带昨日摘要）" if has_summary else "（无摘要）"))
         self.set_state(BotStates.GREETING, "晚上好")
         self.speak(greeting)
-        # 把问候作为 assistant 消息存入会话记忆，让后续对话上下文连贯。
-        self.engine.session_memory.append({"role": "assistant", "content": greeting})
         print("Models loaded.", flush=True)
 
     def record_voice_vad(self, filename="input.wav"):
