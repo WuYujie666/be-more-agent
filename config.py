@@ -9,7 +9,12 @@ import time
 import datetime
 import contextlib
 
-import sounddevice as sd
+# sounddevice 只在音频设备查询/录音播放时用到。容错导入：在没装该库的开发机上
+# 也能 import config（供 chat_engine / debug_chat 等无硬件链路使用）。
+try:
+    import sounddevice as sd
+except ImportError:
+    sd = None
 
 # =========================================================================
 # 1. CONFIGURATION & CONSTANTS
@@ -55,6 +60,7 @@ DEFAULT_CONFIG = {
     "goodnight_prompt": "请只说一句温柔的晚安、祝好梦。",
     "story_prompt": "用户想听故事。可以讲一个温柔、适合睡前的短故事，长度可以比平时长一些（几句到一小段即可），讲完轻声收尾。",
     "summary_prompt": "把下面这段睡前对话提炼成一两句话，用第二人称直接陈述用户说了什么、提到什么、想做什么，写成可以直接念出来的句子（例如「你说……，你提到……，你想……」）。只输出这句话，不要加引号或任何前缀：",
+    "debug_prompt": False,                      # 打开后每次调 LLM 前打印完整 messages，便于调 prompt
 }
 
 # LLM SETTINGS
@@ -217,7 +223,7 @@ def load_config():
     config = DEFAULT_CONFIG.copy()
     if os.path.exists(CONFIG_FILE):
         try:
-            with open(CONFIG_FILE, "r") as f:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 user_config = json.load(f)
                 config.update(user_config)
         except Exception as e:
@@ -233,6 +239,10 @@ SYSTEM_PROMPT = CURRENT_CONFIG["system_prompt"]
 def resolve_input_device(config):
     requested = config.get("input_device")
     if requested in (None, "", "default"):
+        return None
+
+    if sd is None:
+        print("[AUDIO] sounddevice 未安装，无法解析输入设备（无硬件调试链路可忽略）", flush=True)
         return None
 
     try:
