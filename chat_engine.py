@@ -44,98 +44,6 @@ def _dump_messages(messages):
     print("==================", flush=True)
 
 
-def _unique_hits(texts, words):
-    """Return matched words in first-seen order."""
-    seen = set()
-    hits = []
-    joined = "\n".join(texts)
-    for word in words:
-        if word in joined and word not in seen:
-            seen.add(word)
-            hits.append(word)
-    return hits
-
-
-def _join_cn(items, limit=3):
-    items = items[:limit]
-    if len(items) <= 1:
-        return "".join(items)
-    return "、".join(items[:-1]) + "和" + items[-1]
-
-
-def _drop_contained(items):
-    result = []
-    for item in items:
-        if any(item != other and item in other for other in items):
-            continue
-        if item not in result:
-            result.append(item)
-    return result
-
-
-def _fallback_summary(texts):
-    """Small deterministic summary when the local LLM produces a poor memory."""
-    useful = [
-        t.strip() for t in texts
-        if t.strip() and not re.fullmatch(r"[0-9+\-*/=？? ]+", t.strip())
-    ]
-    if not useful:
-        return ""
-
-    festivals = _unique_hits(useful, ["端午节", "端午", "中秋节", "中秋", "春节", "节日"])
-    festivals = ["端午节" if x == "端午" else "中秋节" if x == "中秋" else x for x in festivals]
-    festivals = list(dict.fromkeys(festivals))
-    foods = _unique_hits(
-        useful,
-        ["红豆粽子", "粽子", "月饼", "咸鸭蛋", "鸭蛋", "蛋黄", "豆花鸡", "晚餐"],
-    )
-    activities = _unique_hits(useful, ["看晚会", "晚会"])
-    foods = _drop_contained(foods)
-    activities = _drop_contained(activities)
-    positives = _unique_hits(useful, ["喜欢", "好棒", "很好", "好吃", "开心", "愉快", "感兴趣"])
-    last_question = next((t for t in reversed(useful) if "?" in t or "？" in t or "吗" in t), "")
-
-    if festivals:
-        details = _join_cn(foods + activities, 3)
-        feeling = "，语气里有轻松喜欢的感觉" if positives else ""
-        if details:
-            return f"你聊到{_join_cn(festivals, 2)}的节日氛围，提到{details}{feeling}。"
-        return f"你聊到{_join_cn(festivals, 2)}，整体对节日有轻松喜欢的感觉。"
-
-    if foods:
-        if "豆花鸡" in foods or "晚餐" in foods:
-            tail = "，最后还问起晚餐选择" if last_question else ""
-            return f"你聊到晚餐和{_join_cn([f for f in foods if f != '晚餐'], 2) or '想吃的东西'}，对合口味的选择很感兴趣{tail}。"
-        return f"你聊到{_join_cn(foods, 3)}这些吃的，也记录下了自己喜欢的味道。"
-
-    if last_question:
-        topic = last_question.rstrip("？?")
-        return f"你最后问到“{topic}”，我先帮你记下，明天可以再慢慢聊。"
-
-    return f"你聊到{useful[-1].rstrip('。！？?')}，我先帮你记下这件小事。"
-
-
-def _summary_is_usable(summary, texts):
-    if not summary:
-        return False
-    summary = summary.strip()
-    if len(summary) < 12:
-        return False
-    if summary.endswith(("?", "？")) or "吗？" in summary or "吗?" in summary:
-        return False
-    bad_starts = ("你今晚想听", "你想听", "你今天想", "你是否", "你要不要")
-    if summary.startswith(bad_starts):
-        return False
-    joined = "\n".join(texts)
-    meaningful_hits = [
-        word for word in ("端午", "中秋", "粽子", "月饼", "晚会", "豆花鸡", "晚餐", "白噪音", "轻音乐")
-        if word in joined
-    ]
-    if meaningful_hits and not any(word in summary for word in meaningful_hits[:4]):
-        return False
-    return True
-
-
 class ChatEngine:
     """对话状态机与 LLM 交互的全部逻辑，不持有任何硬件/GUI 资源。"""
 
@@ -409,34 +317,23 @@ class ChatEngine:
             summary = summary.strip().replace("\n", " ")
             summary = re.sub(r"^(摘要|总结|记忆|输出)[:：]\s*", "", summary).strip()
             summary = summary.strip("「」“”\"' ")
-            if not _summary_is_usable(summary, texts):
-                fallback = _fallback_summary(texts)
-                if fallback:
-                    print(f"[SUMMARY] fallback: {summary}", flush=True)
-                    summary = fallback
             if summary:
                 append_summary(summary)
                 print(f"[SUMMARY] saved: {summary}", flush=True)
         except Exception as e:
+            # 生成失败就不存摘要：下次开场自然退回"晚上好。今天有什么想分享的吗？"
             print(f"[SUMMARY] generate failed: {e}", flush=True)
-            summary = _fallback_summary(texts)
-            if summary:
-                append_summary(summary)
-                print(f"[SUMMARY] saved: {summary}", flush=True)
 
     def load_chat_history(self):
         """跨会话不再回灌原始转录；仅以系统 prompt 起步，连续性靠每日摘要。"""
         return [{"role": "system", "content": SYSTEM_PROMPT}]
 
     def build_greeting(self):
-        """开场问候：晚上好 →（昨天做的事＝每日摘要）→ 今天有什么想分享的吗。
-        「昨天做的事」直接拼接摘要——摘要已存成可念出的第二人称句，无需再加工。
+        """开场问候。摘要本身已是一整句开场白（晚上好…昨天…今天有什么想分享的吗），
+        有摘要就直接念，不再二次包裹；无摘要时退回写死的默认问候。
         问候作为 assistant 消息存入会话记忆，让后续对话上下文连贯。
         返回 (greeting, has_summary)，调用方负责念出/打印。"""
         summary = load_recent_summary()
-        if summary:
-            greeting = "晚上好。昨天" + summary + "。今天有什么想分享的吗？"
-        else:
-            greeting = "晚上好。今天有什么想分享的吗？"
+        greeting = summary if summary else "晚上好。今天有什么想分享的吗？"
         self.session_memory.append({"role": "assistant", "content": greeting})
         return greeting, bool(summary)
