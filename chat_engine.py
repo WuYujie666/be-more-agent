@@ -156,9 +156,13 @@ class ChatEngine:
             parts.append("[系统提示]" + extra_instruction)
         if lang_hint:
             parts.append(lang_hint)
-        user_msg = {"role": "user", "content": "\n".join(parts)}
-        messages = self.permanent_memory + self.session_memory + [user_msg]
+        # 本轮发给 LLM 的 user 消息带上临时的系统/语言提示；但存入历史的只放干净
+        # 原文，避免「过渡/收尾」这类一次性指令污染后续轮次的上下文。
+        call_user_msg = {"role": "user", "content": "\n".join(parts)}
+        messages = self.permanent_memory + self.session_memory + [call_user_msg]
         _dump_messages(messages)
+        # 用户原文进会话记忆，保证后续轮次 LLM 能看到完整的多轮历史（不只是机器人自己说过的话）。
+        self.session_memory.append({"role": "user", "content": text})
 
         full_raw = ""          # LLM 原始输出（含标签），用于最终解析与记忆
         pending = ""           # 显示缓冲：拦住可能跨 chunk 的 [AUDIO:x] 标签
