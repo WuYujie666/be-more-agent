@@ -1038,15 +1038,11 @@ class BotGUI:
         if not texts:
             return
         transcript = "\n".join(texts)
+        summary_prompt = CURRENT_CONFIG.get("summary_prompt", "")
         try:
             resp = ollama.chat(
                 model=TEXT_MODEL,
-                messages=[{"role": "user", "content":
-                           "把下面这段睡前对话提炼成一两句话，用第二人称直接陈述用户说了什么、"
-                           "提到什么、想做什么，写成可以直接念出来的句子"
-                           "（例如「你说……，你提到……，你想……」）。"
-                           "只输出这句话，不要加引号或任何前缀：\n"
-                           + transcript}],
+                messages=[{"role": "user", "content": summary_prompt + "\n" + transcript}],
                 stream=False, options=OLLAMA_OPTIONS,
             )
             summary, _ = extract_audio_tag(resp["message"]["content"])
