@@ -28,9 +28,9 @@ import ollama
 
 from config import (
     CURRENT_CONFIG, OLLAMA_OPTIONS, TEXT_MODEL, BotStates, SYSTEM_PROMPT,
-    detect_story_intent, extract_audio_tag,
+    detect_audio_request, detect_story_intent, extract_audio_tag,
     match_audio_word, match_sleep_word, match_yesno_word,
-    append_summary, load_recent_summary,
+    append_summary, load_recent_summary, AUDIO_TYPE_LABELS,
 )
 
 
@@ -42,6 +42,98 @@ def _dump_messages(messages):
     for m in messages:
         print(f"[{m['role']}]\n{m['content']}\n", flush=True)
     print("==================", flush=True)
+
+
+def _unique_hits(texts, words):
+    """Return matched words in first-seen order."""
+    seen = set()
+    hits = []
+    joined = "\n".join(texts)
+    for word in words:
+        if word in joined and word not in seen:
+            seen.add(word)
+            hits.append(word)
+    return hits
+
+
+def _join_cn(items, limit=3):
+    items = items[:limit]
+    if len(items) <= 1:
+        return "".join(items)
+    return "、".join(items[:-1]) + "和" + items[-1]
+
+
+def _drop_contained(items):
+    result = []
+    for item in items:
+        if any(item != other and item in other for other in items):
+            continue
+        if item not in result:
+            result.append(item)
+    return result
+
+
+def _fallback_summary(texts):
+    """Small deterministic summary when the local LLM produces a poor memory."""
+    useful = [
+        t.strip() for t in texts
+        if t.strip() and not re.fullmatch(r"[0-9+\-*/=？? ]+", t.strip())
+    ]
+    if not useful:
+        return ""
+
+    festivals = _unique_hits(useful, ["端午节", "端午", "中秋节", "中秋", "春节", "节日"])
+    festivals = ["端午节" if x == "端午" else "中秋节" if x == "中秋" else x for x in festivals]
+    festivals = list(dict.fromkeys(festivals))
+    foods = _unique_hits(
+        useful,
+        ["红豆粽子", "粽子", "月饼", "咸鸭蛋", "鸭蛋", "蛋黄", "豆花鸡", "晚餐"],
+    )
+    activities = _unique_hits(useful, ["看晚会", "晚会"])
+    foods = _drop_contained(foods)
+    activities = _drop_contained(activities)
+    positives = _unique_hits(useful, ["喜欢", "好棒", "很好", "好吃", "开心", "愉快", "感兴趣"])
+    last_question = next((t for t in reversed(useful) if "?" in t or "？" in t or "吗" in t), "")
+
+    if festivals:
+        details = _join_cn(foods + activities, 3)
+        feeling = "，语气里有轻松喜欢的感觉" if positives else ""
+        if details:
+            return f"你聊到{_join_cn(festivals, 2)}的节日氛围，提到{details}{feeling}。"
+        return f"你聊到{_join_cn(festivals, 2)}，整体对节日有轻松喜欢的感觉。"
+
+    if foods:
+        if "豆花鸡" in foods or "晚餐" in foods:
+            tail = "，最后还问起晚餐选择" if last_question else ""
+            return f"你聊到晚餐和{_join_cn([f for f in foods if f != '晚餐'], 2) or '想吃的东西'}，对合口味的选择很感兴趣{tail}。"
+        return f"你聊到{_join_cn(foods, 3)}这些吃的，也记录下了自己喜欢的味道。"
+
+    if last_question:
+        topic = last_question.rstrip("？?")
+        return f"你最后问到“{topic}”，我先帮你记下，明天可以再慢慢聊。"
+
+    return f"你聊到{useful[-1].rstrip('。！？?')}，我先帮你记下这件小事。"
+
+
+def _summary_is_usable(summary, texts):
+    if not summary:
+        return False
+    summary = summary.strip()
+    if len(summary) < 12:
+        return False
+    if summary.endswith(("?", "？")) or "吗？" in summary or "吗?" in summary:
+        return False
+    bad_starts = ("你今晚想听", "你想听", "你今天想", "你是否", "你要不要")
+    if summary.startswith(bad_starts):
+        return False
+    joined = "\n".join(texts)
+    meaningful_hits = [
+        word for word in ("端午", "中秋", "粽子", "月饼", "晚会", "豆花鸡", "晚餐", "白噪音", "轻音乐")
+        if word in joined
+    ]
+    if meaningful_hits and not any(word in summary for word in meaningful_hits[:4]):
+        return False
+    return True
 
 
 class ChatEngine:
@@ -90,9 +182,43 @@ class ChatEngine:
         sleep_word = match_sleep_word(user_text)
         turns_reached = self.turn_count >= self.max_chat_turns
         transition = bool(sleep_word) or turns_reached
+        audio_requested = t is not None
+        direct_audio_request = detect_audio_request(user_text)
 
         extra = None
-        if transition:
+        if direct_audio_request:
+            audio_label = AUDIO_TYPE_LABELS.get(self.audio_type, "助眠声音")
+            self.io.stage(f"检测到明确播放请求，直接播放{audio_label}")
+            extra = (
+                f"用户已经明确要求播放{audio_label}。请只用一句话温柔确认马上播放{audio_label}。"
+                "不要询问白噪音还是轻音乐，不要继续引导聊天，不要出主意。"
+            )
+        elif transition and audio_requested:
+            audio_label = AUDIO_TYPE_LABELS.get(self.audio_type, "助眠声音")
+            if sleep_word:
+                self.io.stage(
+                    f"检测到睡意关键词「{sleep_word}」且已指定{audio_label}，直接进入播放阶段"
+                )
+            else:
+                self.io.stage(f"已聊满 {self.max_chat_turns} 轮且已指定{audio_label}，直接进入播放阶段")
+            extra = (
+                f"用户已经指定想听{audio_label}。请用一句话温柔收尾，并说明马上播放{audio_label}。"
+                "不要再询问白噪音还是轻音乐，不要出主意、不要解决问题。"
+            )
+        elif turns_reached: #达到最大轮数后：先生成回复 -> 再 summary -> 再 play white_noise
+            self.audio_type = CURRENT_CONFIG.get("default_audio", "white_noise")
+            audio_label = AUDIO_TYPE_LABELS.get(self.audio_type, "默认助眠声音")
+            self.io.stage(f"已聊满 {self.max_chat_turns} 轮，默认播放{audio_label}")
+            base_extra = CURRENT_CONFIG.get(
+                "max_turns_prompt",
+                f"请先用一句话简短回应用户最后这句话，再温柔收尾说今天聊了很多就到这里、该晚安了，并说明马上播放{audio_label}。不要再询问白噪音还是轻音乐，不要出主意、不要解决问题。"
+            )
+            extra = (
+                f"用户最后一句原文是：「{user_text}」。"
+                f"{base_extra}"
+                "不要跳过第一句回应；不能只说晚安或只说马上播放。"
+            )
+        elif transition:
             if sleep_word:
                 self.io.stage(f"检测到睡意关键词「{sleep_word}」，进入睡前询问阶段")
             else:
@@ -104,7 +230,11 @@ class ChatEngine:
 
         self.chat_and_respond(user_text, extra_instruction=extra)
 
-        if transition:
+        if direct_audio_request or (transition and (audio_requested or turns_reached)):
+            self.start_session_summary()
+            self.phase = "playing"
+            self.io.play_relaxation_audio(self.audio_type)
+        elif transition:
             self.phase = "ask_audio"
 
     def handle_audio_answer(self, user_text):
@@ -168,9 +298,6 @@ class ChatEngine:
         pending = ""           # 显示缓冲：拦住可能跨 chunk 的 [AUDIO:x] 标签
         sentence_buffer = ""   # 攒成整句再送 TTS
         spoke = False
-        TAG_START = "[AUDIO:"
-        COMPLETE_TAG = re.compile(r'^\[AUDIO:\w+\]', re.IGNORECASE)
-
         def emit(piece):
             nonlocal sentence_buffer, spoke
             if not piece:
@@ -194,19 +321,23 @@ class ChatEngine:
                     emit(pending); pending = ""; return
                 if i > 0:
                     emit(pending[:i]); pending = pending[i:]
-                m = COMPLETE_TAG.match(pending)
-                if m:
-                    _, tg = extract_audio_tag(m.group(0))
+                end = pending.find(']')
+                if end == -1:
+                    if final and "AUDIO:" in pending.upper():
+                        pending = ""
+                        return   # 收尾时丢掉被截断的标签残尾
+                    if not final:
+                        return   # 方括号内容可能跨 chunk，等后续 chunk 再判断
+                else:
+                    bracketed = pending[:end + 1]
+                    clean_bracketed, tg = extract_audio_tag(bracketed)
                     if tg:
                         self.audio_type = tg
-                    pending = pending[m.end():]; continue
-                looks_like_prefix = (TAG_START.startswith(pending[:len(TAG_START)])
-                                     or (pending.startswith(TAG_START) and ']' not in pending))
-                if final:
-                    if looks_like_prefix:
-                        pending = ""; return   # 收尾时丢掉被截断的标签残尾
-                elif looks_like_prefix:
-                    return                     # 可能是跨 chunk 的标签前缀，等后续 chunk
+                        pending = pending[end + 1:]
+                        continue
+                    emit(clean_bracketed)
+                    pending = pending[end + 1:]
+                    continue
                 emit('['); pending = pending[1:]   # 只是个普通 '['
 
         try:
@@ -230,7 +361,7 @@ class ChatEngine:
                 self.io.speak(sentence_buffer)
 
             clean_full, tag_type = extract_audio_tag(full_raw)
-            clean_full = re.sub(r'\[AUDIO:?\w*\]?', '', clean_full).strip()
+            clean_full = clean_full.strip()
             if tag_type:
                 self.audio_type = tag_type
             self.session_memory.append({"role": "assistant", "content": clean_full})
@@ -262,23 +393,36 @@ class ChatEngine:
         texts = [t for t in self.chat_user_texts if t.strip()]
         if not texts:
             return
-        transcript = "\n".join(texts)
+        transcript = "\n".join(f"用户第{i}句：{t}" for i, t in enumerate(texts, start=1))
         summary_prompt = CURRENT_CONFIG.get("summary_prompt", "")
         try:
             messages = [{"role": "user", "content": summary_prompt + "\n" + transcript}]
             _dump_messages(messages)
+            summary_options = OLLAMA_OPTIONS.copy()
+            summary_options.update({"temperature": 0.2, "top_p": 0.8, "num_predict": 80})
             resp = ollama.chat(
                 model=TEXT_MODEL,
                 messages=messages,
-                stream=False, options=OLLAMA_OPTIONS,
+                stream=False, options=summary_options,
             )
             summary, _ = extract_audio_tag(resp["message"]["content"])
             summary = summary.strip().replace("\n", " ")
+            summary = re.sub(r"^(摘要|总结|记忆|输出)[:：]\s*", "", summary).strip()
+            summary = summary.strip("「」“”\"' ")
+            if not _summary_is_usable(summary, texts):
+                fallback = _fallback_summary(texts)
+                if fallback:
+                    print(f"[SUMMARY] fallback: {summary}", flush=True)
+                    summary = fallback
             if summary:
                 append_summary(summary)
                 print(f"[SUMMARY] saved: {summary}", flush=True)
         except Exception as e:
             print(f"[SUMMARY] generate failed: {e}", flush=True)
+            summary = _fallback_summary(texts)
+            if summary:
+                append_summary(summary)
+                print(f"[SUMMARY] saved: {summary}", flush=True)
 
     def load_chat_history(self):
         """跨会话不再回灌原始转录；仅以系统 prompt 起步，连续性靠每日摘要。"""

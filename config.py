@@ -55,11 +55,12 @@ DEFAULT_CONFIG = {
     "relaxation_max_minutes": 45,              # 助眠音频最长播放分钟数，到点自动关机
     "summaries_file": "summaries.json",        # 每日一句话摘要存档
     "summary_recent_days": 2,                  # 开场时「昨天摘要」允许的最大天数
-    "transition_prompt": "用户已聊了较久或表达了睡意。请先用一句话简短回应用户这句话，再温柔收尾说今天聊了很多就到这里，然后一定要问用户想听白噪音还是轻音乐。不要出主意、不要解决问题。",
+    "transition_prompt": "用户表达了睡意，但没有指定想听哪种助眠声音。请先用一句话简短回应用户这句话，再温柔收尾，并问用户想听白噪音还是轻音乐。不要出主意、不要解决问题。",
+    "max_turns_prompt": "对话已达到本次睡前陪伴轮数上限。回复必须分两步：第一句必须直接承接用户最后一句话，并明确提到用户最后一句里的核心内容；如果用户最后一句是在提问，不要给建议或展开解决，只温柔接住并说先记下。第二句再温柔收尾，说今天聊了很多就到这里、该晚安了，并说明马上播放默认白噪音。不要再询问白噪音还是轻音乐，不要出主意、不要解决问题。",
     "decline_audio_prompt": "用户还不想睡或不想听助眠声音。请先用一句温柔的话安抚，表示理解他现在还不太想睡；再说一句好好睡觉能帮身体恢复精力的好处；最后道一句晚安、祝好梦。",
     "goodnight_prompt": "请只说一句温柔的晚安、祝好梦。",
     "story_prompt": "用户想听故事。可以讲一个温柔、适合睡前的短故事，长度可以比平时长一些（几句到一小段即可），讲完轻声收尾。",
-    "summary_prompt": "把下面这段睡前对话提炼成一两句话，用第二人称直接陈述用户说了什么、提到什么、想做什么，写成可以直接念出来的句子（例如「你说……，你提到……，你想……」）。只输出这句话，不要加引号或任何前缀：",
+    "summary_prompt": "你是睡前陪伴机器人的记忆整理器。请根据下面的【用户原话】提炼一条明晚开场能自然念出的摘要。要求：1）不要逐句复述，不要把每句话简单拼接；2）提炼出一个主要主题、用户的偏好/感受/未完成的小事；3）忽略无意义测试、算术题、寒暄、控制音频播放的话；4）如果最后一句只是新问题且还没展开，只轻轻记为“你最后问到……”，不要回答问题；5）用第二人称写成一句自然中文，25到45字；6）不要以问题开头，不要输出列表、引号或前缀。用户原话如下：",
     "debug_prompt": False,                      # 打开后每次调 LLM 前打印完整 messages，便于调 prompt
 }
 
@@ -97,9 +98,13 @@ _NO_WORDS = ("不", "别", "算了", "无所谓")
 _YES_WORDS = ("好", "可以", "行", "嗯", "要", "想", "当然", "来吧", "OK", "ok", "play")
 # 想听故事的意图关键词（命中则允许本轮回复适当延长）
 _STORY_WORDS = ("讲故事", "讲个故事", "睡前故事", "故事", "讲一个", "讲一段")
+# 明确请求播放助眠音频的动作词。需同时命中音频类型，才会直接进入播放阶段。
+_AUDIO_REQUEST_WORDS = ("播放", "放", "播", "想听", "要听", "来点", "来一段", "给我", "开一下", "打开")
+_AUDIO_REQUEST_NEGATIONS = ("不想听", "不要听", "别听", "不播放", "不要播放", "别播放", "别放", "不放")
 
-# LLM 回复里偷偷夹带的音频控制标签，例如 [AUDIO:white] / [AUDIO:music]
-_AUDIO_TAG_RE = re.compile(r"\[AUDIO:\s*(\w+)\s*\]", re.IGNORECASE)
+# LLM 回复里偷偷夹带的音频控制标签，例如 [AUDIO:white] / [AUDIO:music]。
+# 容错匹配类似 [想要白噪音时加AUDIO:white] 的啰嗦输出，避免泄露给用户。
+_AUDIO_TAG_RE = re.compile(r"\[[^\]]*AUDIO:\s*(\w+)[^\]]*\]", re.IGNORECASE)
 _TAG_TO_TYPE = {
     "white": "white_noise",
     "music": "music",
@@ -152,6 +157,15 @@ def match_yesno_word(text):
 def detect_audio_type(text):
     """从用户文本里识别想要的助眠音频类型；命中返回 'white_noise'/'music'，否则 None。"""
     return match_audio_word(text)[0]
+
+
+def detect_audio_request(text):
+    """用户是否明确要求现在播放某种助眠音频。"""
+    if not text or match_audio_word(text)[0] is None:
+        return False
+    if _first_hit(text, _AUDIO_REQUEST_NEGATIONS):
+        return False
+    return _first_hit(text, _AUDIO_REQUEST_WORDS) is not None
 
 
 def detect_sleep_intent(text):
