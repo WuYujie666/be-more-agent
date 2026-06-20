@@ -28,7 +28,6 @@
 """
 
 import tkinter as tk
-from tkinter import ttk
 from PIL import Image, ImageTk
 import threading
 import time
@@ -40,6 +39,7 @@ import traceback
 import atexit
 import wave
 import collections
+from functools import partial
 
 # Core dependencies
 import sounddevice as sd
@@ -118,7 +118,7 @@ class BotGUI:
         master.bind('<space>', self.handle_speaking_interrupt)
         atexit.register(self.safe_exit)
         master.focus_force()   # 抢焦点，确保 Escape 等按键能被窗口收到
-        master.configure(bg='#1a1a2e')   # 动画区外背景色
+        master.configure(bg='#000000')   # 动画区外背景色
 
         # 动画区固定 800×450（5 倍像素缩放），在窗口内居中
         self.anim_w, self.anim_h = 800, 450
@@ -163,22 +163,38 @@ class BotGUI:
         self.background_label.place(x=self.anim_x, y=self.anim_y, width=self.anim_w, height=self.anim_h)
         self.background_label.bind('<Button-1>', self.toggle_hud_visibility)
 
-        # --- 聊天气泡系统（Canvas + 自动滚动，初始隐藏）---
-        self.chat_canvas = tk.Canvas(master, bg='#ffffff', highlightthickness=0)
-        self.chat_scrollbar = ttk.Scrollbar(master, orient='vertical', command=self.chat_canvas.yview)
-        self.chat_inner = tk.Frame(self.chat_canvas, bg='#ffffff')
-        self.chat_inner.bind('<Configure>',
-            lambda e: self.chat_canvas.configure(scrollregion=self.chat_canvas.bbox('all')))
-        self.chat_canvas.create_window((0, 0), window=self.chat_inner, anchor='nw')
-        self.chat_canvas.configure(yscrollcommand=self.chat_scrollbar.set)
-        self._last_bot_var = None   # 流式追加时跟踪最后一条 bot 气泡
-        self._chat_height = 130     # 聊天气泡面板默认高度
+        # --- 聊天气泡系统（Canvas 绘制圆角矩形 + 文字，初始隐藏）---
+        # 外框只显示上下两条 #b9451d 边线，左右隐藏
+        self.chat_outer = tk.Frame(master, bg='#b9451d', highlightthickness=0, bd=0)
+        self.chat_canvas = tk.Canvas(self.chat_outer, bg='#000000',
+                                     highlightthickness=0, bd=0)
+        self.chat_canvas.place(x=0, y=1, relwidth=1, relheight=1, height=-2)
+        self.chat_canvas.bind('<MouseWheel>', self._on_chat_mousewheel)
+        self.chat_canvas.bind('<Button-4>', lambda e: self.chat_canvas.yview_scroll(-3, 'units'))
+        self.chat_canvas.bind('<Button-5>', lambda e: self.chat_canvas.yview_scroll(3, 'units'))
+        self.chat_canvas.bind('<Configure>', self._on_chat_canvas_configure)
+        self._bubbles = []           # 每项: {"role":str, "text_id":int, "rect_id":int, "text":str}
+        self._bubble_y = 10          # 下一条气泡的起始 Y
+        self._last_bot_text_id = None
+        self._last_bot_rect_id = None
+        self._chat_height = 130      # 聊天气泡面板默认高度
 
         self.status_var = tk.StringVar(value="Initializing...")
-        self.status_label = ttk.Label(master, textvariable=self.status_var, background="#2e2e2e", foreground="white")
+        self.status_label = tk.Label(master, textvariable=self.status_var,
+                                     bg='#000000', fg='#b9451d', font=('Arial', 10))
 
-        self.exit_button = ttk.Button(master, text="Exit & Save", command=self.safe_exit)
-        self.fullscreen_button = ttk.Button(master, text="全屏", command=self.toggle_fullscreen_btn)
+        self.exit_button = tk.Button(master, text="Exit & Save", command=self.safe_exit,
+            bg='#000000', fg='#b9451d', bd=0,
+            highlightthickness=1, highlightbackground='#b9451d', highlightcolor='#b9451d',
+            font=('Arial', 9), padx=6, pady=1)
+        self.exit_button.bind('<Enter>', lambda e: self.exit_button.config(bg='#3a1509'))
+        self.exit_button.bind('<Leave>', lambda e: self.exit_button.config(bg='#000000'))
+        self.fullscreen_button = tk.Button(master, text="全屏", command=self.toggle_fullscreen_btn,
+            bg='#000000', fg='#b9451d', bd=0,
+            highlightthickness=1, highlightbackground='#b9451d', highlightcolor='#b9451d',
+            font=('Arial', 9), padx=6, pady=1)
+        self.fullscreen_button.bind('<Enter>', lambda e: self.fullscreen_button.config(bg='#3a1509'))
+        self.fullscreen_button.bind('<Leave>', lambda e: self.fullscreen_button.config(bg='#000000'))
 
         self.load_animations()
         self.update_animation()
@@ -186,6 +202,251 @@ class BotGUI:
         threading.Thread(target=self.safe_main_execution, daemon=True).start()
 
     # --- HELPERS ---
+
+    @staticmethod
+    def _interp_color(c1, c2, t):
+        """在俩 hex 颜色间插值，t∈[0,1] 返回 #rrggbb。"""
+        r1, g1, b1 = int(c1[1:3], 16), int(c1[3:5], 16), int(c1[5:7], 16)
+        r2, g2, b2 = int(c2[1:3], 16), int(c2[3:5], 16), int(c2[5:7], 16)
+        return f'#{int(r1+(r2-r1)*t):02x}{int(g1+(g2-g1)*t):02x}{int(b1+(b2-b1)*t):02x}'
+
+    def _fade_in_widget(self, widget, attr, start_c, end_c, remaining, total, interval=20):
+        """透明度渐变弹入：从 visible-dark 到目标色，linear 插值。"""
+        if remaining <= 0:
+            return
+        raw = 1.0 - (remaining / total)
+        t = max(0.0, min(1.0, 0.15 + 0.85 * raw))
+        color = self._interp_color(start_c, end_c, t)
+        try:
+            widget.config(**{attr: color})
+        except tk.TclError:
+            pass
+        self.master.after(interval,
+            partial(self._fade_in_widget, widget, attr, start_c, end_c,
+                    remaining-1, total, interval))
+
+    def _fade_out_widget(self, widget, attr, start_c, end_c, remaining, total=6, interval=15):
+        """透明度渐变弹出：从目标色渐变到黑。"""
+        if remaining <= 0:
+            return
+        raw = 1.0 - (remaining / total)
+        color = self._interp_color(start_c, end_c, raw)
+        try:
+            widget.config(**{attr: color})
+        except tk.TclError:
+            pass
+        self.master.after(interval,
+            partial(self._fade_out_widget, widget, attr, start_c, end_c,
+                    remaining-1, total, interval))
+
+    def _fade_out_bubbles(self, remaining, total=6, interval=15):
+        """淡出时把所有气泡的文字/边框渐变为黑。"""
+        if remaining <= 0:
+            return
+        raw = 1.0 - (remaining / total)
+        for b in self._bubbles:
+            role = b["role"]
+            tt = '#b9451d' if role != 'user' else '#c8c8c8'
+            ft = '#000000' if role != 'user' else '#3a1509'
+            try:
+                self.chat_canvas.itemconfigure(b["text_id"],
+                    fill=self._interp_color(tt, '#000000', raw))
+                self.chat_canvas.itemconfigure(b["rect_id"],
+                    outline=self._interp_color('#b9451d', '#000000', raw),
+                    fill=self._interp_color(ft, '#000000', raw))
+            except tk.TclError:
+                pass
+        self.master.after(interval,
+            partial(self._fade_out_bubbles, remaining-1, total, interval))
+
+    def _fade_in_bubbles(self, remaining, total, interval=20):
+        """恢复旧气泡颜色：15%→100%（淡出时变暗的泡泡渐变成全亮）。"""
+        if remaining <= 0:
+            return
+        raw = 1.0 - (remaining / total)
+        t = 0.15 + 0.85 * raw
+        for b in self._bubbles:
+            role = b["role"]
+            tt = '#b9451d' if role != 'user' else '#c8c8c8'
+            ft = '#000000' if role != 'user' else '#3a1509'
+            try:
+                self.chat_canvas.itemconfigure(b["text_id"],
+                    fill=self._interp_color('#000000', tt, t))
+                self.chat_canvas.itemconfigure(b["rect_id"],
+                    outline=self._interp_color('#000000', '#b9451d', t),
+                    fill=self._interp_color('#000000', ft, t))
+            except tk.TclError:
+                pass
+        self.master.after(interval,
+            partial(self._fade_in_bubbles, remaining-1, total, interval))
+
+    def _do_slide(self, widget, start, end, steps=10, interval=20, total=None, callback=None):
+        """将 widget 从 start(y) 平滑滑动到 end(y)，ease-out 立方缓动：快入慢停。"""
+        if total is None:
+            total = steps
+        if steps <= 0:
+            if callback:
+                callback()
+            return
+        raw = 1.0 - (steps / total)
+        t = 1.0 - (1.0 - raw) ** 3   # ease-out cubic
+        y = int(start + (end - start) * t)
+        try:
+            if widget.winfo_exists():
+                widget.place(y=y)
+        except tk.TclError:
+            pass
+        self.master.after(interval,
+            partial(self._do_slide, widget, start, end, steps-1, interval, total, callback))
+
+    def _slide_in_hud(self):
+        """弹入：按钮从上往下、聊天区从下往上滑入（200ms），伴随透明度渐变。"""
+        ch = self.master.winfo_height()
+        cw = self.master.winfo_width()
+        chat_h = min(self._chat_height, ch // 3)
+        chat_w = cw - 40
+        chat_target = ch - chat_h - 22
+        STEPS, INT = 10, 20  # 200ms
+
+        self.status_label.place(relx=0.5, rely=1.0, anchor=tk.S, relwidth=1)
+        self.status_label.config(fg='#1b0a04')
+        self.exit_button.place(x=10, y=-30);  self.exit_button.config(fg='#1b0a04')
+        btn_w = 50
+        self.fullscreen_button.place(x=cw-10-btn_w, y=-30, width=btn_w)
+        self.fullscreen_button.config(fg='#1b0a04')
+        self.chat_outer.place(x=20, y=ch, width=chat_w, height=chat_h)
+
+        self._do_slide(self.exit_button, -30, 10, STEPS, INT)
+        self._do_slide(self.fullscreen_button, -30, 10, STEPS, INT)
+        self._do_slide(self.chat_outer, ch, chat_target, STEPS, INT)
+
+        self._fade_in_widget(self.exit_button, 'fg', '#1b0a04', '#b9451d',
+                             STEPS, STEPS, INT)
+        self._fade_in_widget(self.fullscreen_button, 'fg', '#1b0a04', '#b9451d',
+                             STEPS, STEPS, INT)
+        self._fade_in_widget(self.status_label, 'fg', '#1b0a04', '#b9451d',
+                             STEPS, STEPS, INT)
+        # 恢复旧气泡颜色（淡出时变暗的泡泡渐变成全亮）
+        self._fade_in_bubbles(STEPS, STEPS, INT)
+
+    def _slide_out_hud(self):
+        """弹出：同弹入步数/时长（200ms），颜色反向变化，像倒放。"""
+        ch = self.master.winfo_height()
+        chat_target = ch - min(self._chat_height, ch // 3) - 22
+        STEPS, INT = 10, 20  # 与弹入完全一致
+
+        self._do_slide(self.exit_button, 10, -30, STEPS, INT)
+        self._do_slide(self.fullscreen_button, 10, -30, STEPS, INT)
+        self._do_slide(self.chat_outer, chat_target, ch, STEPS, INT,
+                       callback=self._forget_hud)
+
+        # 淡出：全亮 → 暗色（mirror 弹入）
+        self._fade_out_widget(self.exit_button, 'fg', '#b9451d', '#1b0a04',
+                              STEPS, STEPS, INT)
+        self._fade_out_widget(self.fullscreen_button, 'fg', '#b9451d', '#1b0a04',
+                              STEPS, STEPS, INT)
+        self._fade_out_widget(self.status_label, 'fg', '#b9451d', '#1b0a04',
+                              STEPS, STEPS, INT)
+        self._fade_out_bubbles(STEPS, STEPS, INT)
+
+    def _forget_hud(self):
+        """隐藏所有 HUD 元素。"""
+        for w in (self.chat_outer, self.status_label,
+                  self.exit_button, self.fullscreen_button):
+            try:
+                w.place_forget()
+            except tk.TclError:
+                pass
+
+    def _on_chat_mousewheel(self, event):
+        """鼠标滚轮滚动聊天区。"""
+        try:
+            if event.delta > 0:
+                self.chat_canvas.yview_scroll(-3, 'units')
+            else:
+                self.chat_canvas.yview_scroll(3, 'units')
+        except tk.TclError:
+            pass
+
+    def _animate_bubble_up(self, text_id, rect_id, total_dist, steps=8, is_user=False):
+        """新气泡短距离弹入（10px） + 从 visible-dark 渐变到目标色（280ms）。
+        位置 ease-out cubic 稳稳落定，颜色 linear 从 15% 到 100%。"""
+        text_target = '#b9451d' if not is_user else '#c8c8c8'
+        fill_target = '#000000' if not is_user else '#3a1509'
+        steps_data = []
+        for i in range(1, steps + 1):
+            p = i / steps
+            # 位置：ease-out cubic（最后稳稳落定）
+            cum = int(total_dist * (1.0 - (1.0 - p) ** 3))
+            prev = int(total_dist * (1.0 - (1.0 - (i-1)/steps) ** 3)) if i > 1 else 0
+            # 颜色：15% → 100% linear（全程肉眼可见）
+            fade = 0.15 + 0.85 * p
+            tc = self._interp_color('#000000', text_target, fade)
+            oc = self._interp_color('#000000', '#b9451d', fade)
+            fc = self._interp_color('#000000', fill_target, fade)
+            steps_data.append((cum - prev, tc, oc, fc))
+        for i, (d, tc, oc, fc) in enumerate(steps_data):
+            self.master.after(i * 35,  # 280ms / 8 steps
+                partial(self._step_bubble_in, text_id, rect_id, d, tc, oc, fc))
+
+    def _step_bubble_in(self, text_id, rect_id, dy, text_color, outline_color, fill_color):
+        """单步气泡弹入：上移 + 更新颜色。"""
+        try:
+            self.chat_canvas.move(text_id, 0, -dy)
+            self.chat_canvas.move(rect_id, 0, -dy)
+            self.chat_canvas.itemconfigure(text_id, fill=text_color)
+            self.chat_canvas.itemconfigure(rect_id, fill=fill_color, outline=outline_color)
+        except tk.TclError:
+            pass
+
+    def _on_chat_canvas_configure(self, event):
+        """聊天 Canvas 尺寸变化时，重排所有气泡的位置和换行宽度。"""
+        cw = event.width
+        if cw < 20:
+            return
+        pad, ipad = 15, 10
+        max_w = max(60, int(cw * 0.65) - ipad * 2)
+        for b in self._bubbles:
+            self.chat_canvas.itemconfigure(b["text_id"], width=max_w)
+            if b["role"] == "user":
+                coords = self.chat_canvas.coords(b["text_id"])
+                if coords:
+                    self.chat_canvas.coords(b["text_id"], cw - pad - ipad, coords[1])
+        self.master.update_idletasks()
+        self._redraw_all_rects()
+
+    def _redraw_all_rects(self):
+        """删除并重绘所有气泡的背景圆角矩形（配合 text 换行后的新尺寸）。"""
+        cw = self.chat_canvas.winfo_width()
+        if cw < 20:
+            cw = 760
+        pad, ipad, cr = 15, 10, 10
+        min_w = 60
+        for b in self._bubbles:
+            self.chat_canvas.delete(b["rect_id"])
+            bbox = self.chat_canvas.bbox(b["text_id"])
+            if not bbox:
+                continue
+            role = b["role"]
+            fill = '#3a1509' if role == 'user' else '#000000'
+            if role == "user":
+                rx1 = bbox[0] - ipad
+                rx2 = cw - pad + ipad
+            else:
+                rx1 = pad - ipad
+                rx2 = bbox[2] + ipad
+            if rx2 - rx1 < min_w:
+                if role == "user":
+                    rx1 = rx2 - min_w
+                else:
+                    rx2 = rx1 + min_w
+            ry1 = bbox[1] - ipad
+            ry2 = bbox[3] + ipad
+            new_rect = self._round_rect(
+                self.chat_canvas, rx1, ry1, rx2, ry2, cr,
+                fill=fill, outline='#b9451d', width=1)
+            self.chat_canvas.tag_lower(new_rect, b["text_id"])
+            b["rect_id"] = new_rect
 
     def safe_exit(self):
         """统一退出口：停音频、存对话历史、卸载模型、关窗口。可重入只执行一次。"""
@@ -231,26 +492,14 @@ class BotGUI:
         self.toggle_fullscreen()
 
     def toggle_hud_visibility(self, event=None):
-        """点击画面：在「只显示动画」和「显示聊天气泡/状态/按钮」之间切换。"""
+        """点击画面：弹入/弹出聊天气泡/状态/按钮（带滑入滑出动画）。"""
         try:
-            if self.chat_canvas.winfo_ismapped():
-                self.chat_canvas.place_forget()
-                self.chat_scrollbar.place_forget()
-                self.status_label.place_forget()
-                self.exit_button.place_forget()
-                self.fullscreen_button.place_forget()
+            if self.chat_outer.winfo_ismapped():
+                self._slide_out_hud()
             else:
-                ch = self.master.winfo_height()
-                cw = self.master.winfo_width()
-                chat_h = min(self._chat_height, ch // 3)
-                chat_w = cw - 40
-                chat_y = ch - chat_h - 22
-                self.chat_canvas.place(x=20, y=chat_y, width=chat_w, height=chat_h)
-                self.chat_scrollbar.place(x=cw-20, y=chat_y, height=chat_h)
-                self.status_label.place(relx=0.5, rely=1.0, anchor=tk.S, relwidth=1)
-                self.exit_button.place(x=10, y=10)
-                self.fullscreen_button.place(x=105, y=10)
-        except tk.TclError: pass
+                self._slide_in_hud()
+        except tk.TclError:
+            pass
 
     def handle_speaking_interrupt(self, event=None):
         """Space 打断：思考/发言时立即清空两条队列、停掉播放，回到 IDLE。"""
@@ -312,39 +561,169 @@ class BotGUI:
         """打印睡前引导流程的阶段调试信息，便于跟踪走到了哪一步。"""
         print(f"[STAGE] {msg}", flush=True)
 
+    @staticmethod
+    def _round_rect(canvas, x1, y1, x2, y2, r, **kwargs):
+        """在 Canvas 上绘制圆角矩形多边形，返回 item id。"""
+        points = [
+            x1+r, y1, x2-r, y1,
+            x2, y1, x2, y1+r,
+            x2, y2-r, x2, y2,
+            x2-r, y2, x1+r, y2,
+            x1, y2, x1, y2-r,
+            x1, y1+r, x1, y1,
+        ]
+        return canvas.create_polygon(points, smooth=True, **kwargs)
+
     def add_message(self, role, text):
-        """新增一条聊天气泡。role='user'（右对齐黄底）或 'bot'（左对齐灰底）。
-        bot 气泡会记下其 StringVar，供 stream_to_bubble 逐字追加。跨线程安全。"""
+        """在 Canvas 上新增一条圆角聊天气泡。role='user'（右对齐+底色叠加）或 'bot'（左对齐黑底）。
+        跨线程安全（经 after 投递到 GUI 线程）。"""
         def _update():
             is_user = role == 'user'
-            bg = '#fff3cd' if is_user else '#f0f0f0'
-            side = 'right' if is_user else 'left'
-
-            frame = tk.Frame(self.chat_inner, bg='#ffffff')
-            frame.pack(fill='x', padx=8, pady=2, expand=True)
-
             cw = self.chat_canvas.winfo_width()
-            max_w = int(cw * 0.7) if cw > 100 else 350
+            if cw < 20:
+                cw = 760
 
-            var = tk.StringVar(value=text)
-            lbl = tk.Label(frame, textvariable=var, wraplength=max_w,
-                           bg=bg, font=('Arial', 11), padx=10, pady=5,
-                           justify='left', anchor='w')
-            lbl.pack(side=side)
+            pad = 15          # Canvas 边缘留白
+            ipad = 10         # 文字在气泡内的内边距
+            cr = 10           # 圆角半径
+            max_w = int(cw * 0.65) - ipad * 2
+            if max_w < 60:
+                max_w = 60
 
-            # 记录 bot 气泡的 StringVar，供 stream_to_bubble 流式追加
-            self._last_bot_var = None if is_user else var
+            # 文字位置
+            if is_user:
+                anchor = 'ne'
+                tx = cw - pad - ipad
+                tx_color = '#c8c8c8'
+            else:
+                anchor = 'nw'
+                tx = pad + ipad
+                tx_color = '#b9451d'
 
+            ty = self._bubble_y + ipad
+
+            text_id = self.chat_canvas.create_text(
+                tx, ty, text=text, font=('Arial', 11), fill=tx_color,
+                width=max_w, anchor=anchor, justify='left')
+
+            # 测量文字实际占用的 bbox
+            self.master.update_idletasks()
+            bbox = self.chat_canvas.bbox(text_id)
+            if not bbox:
+                bbox = (tx, ty, tx + (max_w if is_user else 80), ty + 18)
+
+            # 背景圆角矩形
+            fill = '#3a1509' if is_user else '#000000'
+            min_bubble_w = 60
+
+            if is_user:
+                rx1 = bbox[0] - ipad
+                rx2 = cw - pad + ipad
+            else:
+                rx1 = pad - ipad
+                rx2 = bbox[2] + ipad
+
+            # 保证最小宽度
+            if rx2 - rx1 < min_bubble_w:
+                if is_user:
+                    rx1 = rx2 - min_bubble_w
+                else:
+                    rx2 = rx1 + min_bubble_w
+
+            ry1 = bbox[1] - ipad
+            ry2 = bbox[3] + ipad
+
+            rect_id = self._round_rect(
+                self.chat_canvas, rx1, ry1, rx2, ry2, cr,
+                fill=fill, outline='#b9451d', width=1)
+
+            self.chat_canvas.tag_lower(rect_id, text_id)
+
+            # 记录气泡
+            self._bubbles.append({
+                "role": role, "text_id": text_id, "rect_id": rect_id, "text": text})
+
+            # 更新下一个 Y 位置
+            self._bubble_y = ry2 + 8
+
+            # 流式追加跟踪
+            if is_user:
+                self._last_bot_text_id = None
+                self._last_bot_rect_id = None
+            else:
+                self._last_bot_text_id = text_id
+                self._last_bot_rect_id = rect_id
+
+            # 初始设为目标色 15% 亮度（在黑底上隐约可见），弹入时渐变成 100%
+            tx_color_init = self._interp_color('#000000', tx_color, 0.15)
+            outline_init = self._interp_color('#000000', '#b9451d', 0.15)
+            fill_init = self._interp_color('#000000', fill, 0.15)
+            self.chat_canvas.itemconfigure(text_id, fill=tx_color_init)
+            self.chat_canvas.itemconfigure(rect_id, fill=fill_init, outline=outline_init)
+
+            # 短距离弹入 + 透明度渐变（280ms）
+            anim_offset = 10
+            self.chat_canvas.move(text_id, 0, anim_offset)
+            self.chat_canvas.move(rect_id, 0, anim_offset)
+            self._animate_bubble_up(text_id, rect_id, anim_offset, steps=8, is_user=is_user)
+
+            # 更新滚动区域 & 滚到底
+            self.chat_canvas.configure(scrollregion=self.chat_canvas.bbox('all'))
             self.chat_canvas.yview_moveto(1.0)
+
         self.master.after(0, _update)
 
     def stream_to_bubble(self, chunk):
-        """把 LLM 流式吐出的片段实时追加到最后一条 bot 气泡，实现逐字显示。"""
+        """把 LLM 流式片段实时追加到最后一条 bot 气泡的 Canvas 文字项，
+        并重绘背景圆角矩形以适配新尺寸。"""
         def _update():
-            if self._last_bot_var is None:
+            text_id = self._last_bot_text_id
+            rect_id = self._last_bot_rect_id
+            if text_id is None:
                 return
-            self._last_bot_var.set(self._last_bot_var.get() + chunk)
+
+            # 追加文字
+            current = self.chat_canvas.itemcget(text_id, 'text')
+            self.chat_canvas.itemconfigure(text_id, text=current + chunk)
+
+            # 重绘背景矩形
+            self.master.update_idletasks()
+            bbox = self.chat_canvas.bbox(text_id)
+            if not bbox:
+                return
+
+            self.chat_canvas.delete(rect_id)
+
+            ipad = 10
+            cr = 10
+            pad = 15
+            cw = self.chat_canvas.winfo_width()
+            if cw < 20:
+                cw = 760
+
+            rx1 = pad - ipad
+            rx2 = bbox[2] + ipad
+            if rx2 - rx1 < 60:
+                rx2 = rx1 + 60
+            ry1 = bbox[1] - ipad
+            ry2 = bbox[3] + ipad
+
+            new_rect = self._round_rect(
+                self.chat_canvas, rx1, ry1, rx2, ry2, cr,
+                fill='#000000', outline='#b9451d', width=1)
+            self.chat_canvas.tag_lower(new_rect, text_id)
+            self._last_bot_rect_id = new_rect
+
+            # 更新气泡记录
+            for b in self._bubbles:
+                if b["text_id"] == text_id:
+                    b["rect_id"] = new_rect
+                    b["text"] = current + chunk
+                    break
+
+            self.chat_canvas.configure(scrollregion=self.chat_canvas.bbox('all'))
             self.chat_canvas.yview_moveto(1.0)
+
         self.master.after(0, _update)
 
     def on_window_resize(self, event):
@@ -358,12 +737,13 @@ class BotGUI:
         self.background_label.place(x=self.anim_x, y=self.anim_y)
         # 聊天面板当前可见时一并重新定位
         try:
-            if self.chat_canvas.winfo_ismapped():
+            if self.chat_outer.winfo_ismapped():
                 chat_h = min(self._chat_height, h // 3)
                 chat_w = w - 40
                 chat_y = h - chat_h - 22
-                self.chat_canvas.place(x=20, y=chat_y, width=chat_w, height=chat_h)
-                self.chat_scrollbar.place(x=w-20, y=chat_y, height=chat_h)
+                self.chat_outer.place(x=20, y=chat_y, width=chat_w, height=chat_h)
+                btn_w = 50
+                self.fullscreen_button.place(x=w-10-btn_w, y=10, width=btn_w)
         except tk.TclError:
             pass
 
@@ -879,4 +1259,18 @@ if __name__ == "__main__":
     print("--- SYSTEM STARTING ---", flush=True)
     root = tk.Tk()
     app = BotGUI(root)
+    # 测试：展示 UI 效果（多轮对话演示）
+    # def demo_ui():
+    #     app.toggle_hud_visibility()
+    #     app.add_message("user", "你好呀，今天过得怎么样？")
+    #     root.after(300, lambda: app.add_message("bot", "晚上好呀～今天陪你聊天真开心！有什么想聊的话题吗？"))
+    #     root.after(600, lambda: app.add_message("user", "我想听一个睡前故事"))
+    #     root.after(900, lambda: app.add_message("bot", "好啊，我给你讲一个小王子的故事吧。从前有一个小王子，他住在一个很小的星球上，那个星球比一座房子大不了多少。他每天清理猴面包树的幼苗，看日落，照顾一朵骄傲的玫瑰花。"))
+    #     root.after(1500, lambda: app.add_message("user", "玫瑰花后来怎么样了？"))
+    #     root.after(1800, lambda: app.add_message("bot", "玫瑰花后来明白了，小王子对她是独一无二的，就像她对他也是独一无二的。小王子尽管走遍了各个星球，见到了各种奇奇怪怪的大人，但他心里始终惦记着他的玫瑰花。"))
+    #     root.after(2400, lambda: app.add_message("user", "真好啊，我也想养一朵玫瑰花"))
+    #     root.after(2700, lambda: app.add_message("bot", "那你可以从现在开始种一颗种子呀。每天给它浇水、陪它说话，等到开花的时候，你会发现这朵花是全世界最特别的——因为那是属于你的玫瑰花🌹"))
+    #     root.after(3300, lambda: app.add_message("user", "嗯，那晚安啦"))
+    #     root.after(3600, lambda: app.add_message("bot", "晚安，好梦。愿你在梦里也能遇见属于你的小王子。明天见～"))
+    # root.after(500, demo_ui)
     root.mainloop()
