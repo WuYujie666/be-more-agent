@@ -10,15 +10,13 @@ import threading
 import time
 
 import httpx
-import ollama
 from config import CURRENT_CONFIG
 
 _ROOT = Path(__file__).resolve().parent
 _lock = threading.Lock()
 _process = None
 _client = httpx.Client(trust_env=False, timeout=120)
-_ollama = ollama.Client(host='http://127.0.0.1:11434', trust_env=False)
-_cloud_client = httpx.Client(timeout=httpx.Timeout(120, connect=15))
+_cloud_client = httpx.Client(timeout=httpx.Timeout(12, connect=5))
 
 
 def cloud_settings():
@@ -82,14 +80,47 @@ def ensure_server():
 
 
 def chat(*, model, messages, stream=False, options=None, keep_alive=None):
-    options = dict(options or {})
-    options.pop('keep_alive', None)
-    backend = CURRENT_CONFIG.get('llm_backend', 'ollama')
-    if backend == 'ollama':
-        return _ollama.chat(model=model, messages=messages, stream=stream,
-                            options=options, keep_alive=keep_alive)
+    backend = CURRENT_CONFIG.get('llm_backend', 'deepseek')
     if backend not in ('llama.cpp', 'deepseek'):
         raise ValueError(f'Unknown LLM backend: {backend}')
+    def request(selected, history):
+        return _request(selected, history, stream, options)
+    if backend == 'llama.cpp':
+        return request(backend, messages)
+    if not stream:
+        try:
+            return request('deepseek', messages)
+        except (httpx.HTTPError, ValueError, KeyError, IndexError, RuntimeError) as exc:
+            print(f'[LLM] cloud failed ({type(exc).__name__}); falling back to local Qwen', flush=True)
+            return request('llama.cpp', messages)
+
+    def fallback_stream():
+        emitted = ''
+        try:
+            yield_stream = request('deepseek', messages)
+            try:
+                for chunk in yield_stream:
+                    emitted += chunk['message']['content']
+                    yield chunk
+            finally:
+                yield_stream.close()
+            return
+        except (httpx.HTTPError, ValueError, KeyError, IndexError, RuntimeError) as exc:
+            print(f'[LLM] cloud failed ({type(exc).__name__}); falling back to local Qwen', flush=True)
+        history = list(messages)
+        if emitted:
+            history += [{'role': 'assistant', 'content': emitted},
+                        {'role': 'user', 'content': '连接中断，请紧接上一段继续，只输出剩余内容，不要重复已经说过的话。'}]
+        local = request('llama.cpp', history)
+        try:
+            yield from local
+        finally:
+            local.close()
+    return fallback_stream()
+
+
+def _request(backend, messages, stream, options=None):
+    options = dict(options or {})
     headers = {}
     client = _client
     if backend == 'deepseek':
@@ -112,9 +143,14 @@ def chat(*, model, messages, stream=False, options=None, keep_alive=None):
     if not stream:
         response = client.post(endpoint, json=body, headers=headers)
         response.raise_for_status()
-        return {'message': response.json()['choices'][0]['message']}
+        message = response.json()['choices'][0]['message']
+        if not message.get('content'):
+            raise RuntimeError('Empty model response')
+        return {'message': message}
 
     def chunks():
+        complete = False
+        received = False
         with client.stream('POST', endpoint, json=body, headers=headers) as response:
             response.raise_for_status()
             for line in response.iter_lines():
@@ -122,14 +158,20 @@ def chat(*, model, messages, stream=False, options=None, keep_alive=None):
                     continue
                 data = line[6:]
                 if data == '[DONE]':
+                    complete = True
                     break
                 event = json.loads(data)
                 if 'error' in event:
                     raise RuntimeError(str(event['error']))
                 for choice in event.get('choices', []):
+                    if choice.get('finish_reason') is not None:
+                        complete = True
                     content = choice.get('delta', {}).get('content')
                     if content:
+                        received = True
                         yield {'message': {'content': content}}
+        if not complete or not received:
+            raise RuntimeError('Incomplete or empty model stream')
     return chunks()
 
 

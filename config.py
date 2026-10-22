@@ -65,7 +65,7 @@ DEFAULT_CONFIG = {
 }
 
 # LLM SETTINGS
-OLLAMA_OPTIONS = {
+LLM_OPTIONS = {
     'keep_alive': '-1',
     'num_thread': 4,
     'temperature': 0.7,

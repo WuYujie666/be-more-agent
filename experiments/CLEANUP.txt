@@ -13,3 +13,7 @@ build_variant.py
 Retained current Q8 A/B benchmark, fixed audio clips and raw logs, reviewed references,
 CER scorer, first-audio benchmark and streaming regression checks.
 Temporary builds under /tmp were not deployed and are outside the project cleanup.
+
+2026-10-22: retired benchmark_first_audio.py and benchmark_llm_backends.py,
+which required the removed Ollama backend. Historical measurements and methods
+remain in FIRST_AUDIO_RESULTS.txt, PERFORMANCE.txt and their JSON results.

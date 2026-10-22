@@ -31,7 +31,7 @@ from memory_backend import MemoryService, memory_context
 import llm_backend as llm
 
 from config import (
-    CURRENT_CONFIG, OLLAMA_OPTIONS, TEXT_MODEL, BotStates, SYSTEM_PROMPT,
+    CURRENT_CONFIG, LLM_OPTIONS, TEXT_MODEL, BotStates, SYSTEM_PROMPT,
     detect_audio_request, detect_story_intent, extract_audio_tag,
     match_audio_word, match_sleep_word, match_yesno_word,
     append_summary, load_recent_summary, AUDIO_TYPE_LABELS,
@@ -274,7 +274,7 @@ class ChatEngine:
 
         stream = None
         try:
-            stream = llm.chat(model=TEXT_MODEL, messages=messages, stream=True, options=OLLAMA_OPTIONS)
+            stream = llm.chat(model=TEXT_MODEL, messages=messages, stream=True, options=LLM_OPTIONS)
 
             _t_llm = time.perf_counter()
             _ttft_logged = False
@@ -392,7 +392,7 @@ class ChatEngine:
         try:
             messages = [{"role": "user", "content": summary_prompt + "\n" + transcript}]
             _dump_messages(messages)
-            summary_options = OLLAMA_OPTIONS.copy()
+            summary_options = LLM_OPTIONS.copy()
             summary_options.update({"temperature": 0.2, "top_p": 0.8, "num_predict": 80})
             resp = llm.chat(
                 model=TEXT_MODEL,

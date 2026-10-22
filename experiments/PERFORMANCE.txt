@@ -274,3 +274,14 @@ not end-to-end audible latency. No production memory touched; test DB removed.
 The old recording says 'today', so production extraction dated the event to
 this test's 2026-10-22 session; this is not the recording's original event date.
 GPU discovery and optional spaCy warnings did not prevent CPU vector retrieval.
+
+2026-10-22: automatic DeepSeek -> local llama.cpp/Qwen fallback
+Evidence: local_fallback_results.json. Injected cloud HTTP 502 and SDK connection
+failure; real local Qwen completed chat (18.615s including cold startup), summary
+(1.293s warm) and short structured memory-provider response (2.151s warm).
+This does not validate full Mem0 extraction with long session/context prompts.
+Offline fallback checks cover 401/429/502, timeout, empty responses, interrupted
+streams, partial-output continuation, cancellation and failure of both backends.
+Project Ollama dependency/backend/install steps removed; historical results kept.
+System-wide Ollama uninstall remains pending: root-owned install requires sudo
+password unavailable to this session. No system install files were removed.

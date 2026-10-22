@@ -28,7 +28,7 @@
 
 ```text
 麦克风 → webrtcvad 断句录音 → SenseVoice / whisper.cpp 语音转文字 (STT)
-       → DeepSeek API / llama.cpp / Ollama 大模型流式生成回复 (LLM)
+       → DeepSeek API / llama.cpp 大模型流式生成回复 (LLM)
        → sherpa-onnx / piper 文字转语音 (TTS) → 扬声器播放
 ```
 
@@ -112,14 +112,10 @@ sudo apt update
 sudo apt install -y python3-tk python3-dev libasound2-dev portaudio19-dev cmake build-essential git
 ```
 
-### 2. 安装 Ollama 并拉取文本模型
+### 2. 配置文本模型
 
-本项目用 [Ollama](https://ollama.com) 在本机运行大模型。
-
-```bash
-curl -fsSL https://ollama.com/install.sh | sh
-ollama pull qwen2.5:1.5b
-```
+当前使用 DeepSeek API，在 `.env` 配置密钥；本地 llama.cpp/Qwen 用于故障回退。
+具体配置与本地模型路径见下方后端说明。
 
 ### 3. 编译 whisper.cpp 并下载中文模型
 
@@ -162,7 +158,7 @@ source venv/bin/activate
 python agent.py
 ```
 
-开发机上调试对话 / prompt（只需 Ollama，免硬件）：
+开发机上调试对话 / prompt（配置文本后端即可，免硬件）：
 
 ```bash
 python debug_chat.py                         # 交互打字逐轮对话
@@ -183,7 +179,7 @@ pytest
 
 | 字段 | 说明 |
 | --- | --- |
-| `text_model` | Ollama 文本模型，如 `qwen2.5:1.5b` |
+| `text_model` | 文本模型标识；本地权重由 `llama_model` 指定 |
 | `tts_engine` | TTS 引擎：`sherpa`（中文，推荐）或留空走 `piper` |
 | `sherpa_model_dir` | sherpa-onnx 模型目录，如 `sherpa-models/vits-zh-aishell3` |
 | `voice_model` | piper 备用嗓模型路径 |
@@ -212,7 +208,7 @@ pytest
 
 本项目最初 fork 自 [brenpoly/be-more-agent](https://github.com/brenpoly/be-more-agent)，并改造为中文睡前陪伴场景。感谢以下开源项目：
 
-* [Ollama](https://ollama.com) —— 本地大模型运行时
+* [llama.cpp](https://github.com/ggml-org/llama.cpp) —— 本地大模型运行时
 * [whisper.cpp](https://github.com/ggerganov/whisper.cpp) —— 语音转文字
 * [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) —— 中文语音合成
 * [Piper](https://github.com/rhasspy/piper)（Rhasspy 项目）—— 备用语音合成
@@ -237,10 +233,10 @@ pytest
 配置项：`llama_binary`、`llama_model` 为项目相对路径或绝对路径；
 `llama_context` 当前 4096；`llama_autostart` 当前 true；`llama_url` 当前
 `http://127.0.0.1:18080`。连接自行管理的服务时关闭 `llama_autostart`。
-服务不可用会明确报错，不会悄悄切换后端。
+本地服务也不可用时会明确报错。
 
-回退：把 `llm_backend` 改为 `ollama` 后重启，继续使用 `text_model` 指定的模型。
-两种本机后端均绕过 HTTP 代理，不修改系统代理配置。
+手动选择本地：把 `llm_backend` 改为 `llama.cpp` 后重启。
+本机后端绕过 HTTP 代理，不修改系统代理配置。
 
 ### 当前大模型后端：DeepSeek Flash API
 
@@ -319,3 +315,15 @@ venv/bin/python memory_tool.py delete <memory_id>
 使用独立临时库，跨进程验证保存、追问和清空；会调用付费 API，不运行 GUI/TTS。
 结果见 `experiments/memory_audio_results.json`。LoCoMo 小样本结果见
 `experiments/locomo_session/REPORT.txt`，自动评分较宽松，不代表完整回答准确率。
+
+### 云端故障回退
+
+DeepSeek 请求失败（包括 HTTP 错误、连接/读取超时、空回复、流意外结束）时，
+聊天、预热和摘要自动尝试本地 llama.cpp/Qwen；云端连接超时5秒、读取超时12秒。
+读取超时是等待下一批数据的时限，不是整个回复的总时限。下一次调用仍优先云端。
+流式回复已经输出的部分保留，并让本地模型续写；模型仍可能重复或改变语气。
+用户主动打断不会触发回退。首次回退需加载本地模型，响应会比正常云端慢。
+本地服务也失败则保留错误提示，不无限重试。Mem0 提取的 API 失败也尝试本地
+模型；它的超时为30秒。小模型的结构化提取质量和4096 token上下文仍有限，
+过长会话或无效输出可能无法保存，不能保证所有云端失败都能完成记忆写入。
+Ollama 已从项目依赖、运行路径及安装脚本移除；历史实验数据保留。

@@ -15,7 +15,7 @@
 
 一轮对话的数据流水线（语音本地处理，文本模型可选云端）：
     麦克风 → VAD 断句录音 → SenseVoice / whisper.cpp 语音转文字（STT）
-          → DeepSeek API / llama.cpp / Ollama 大模型流式生成回复（LLM）
+          → DeepSeek API / llama.cpp 大模型流式生成回复（LLM）
           → sherpa/piper 文字转语音（TTS）→ 扬声器播放
 
 线程模型：
@@ -55,7 +55,7 @@ import asr_backend
 # 1. 配置 / 提示词从内部模块导入
 # =========================================================================
 from config import (
-    INPUT_DEVICE_NAME, OLLAMA_OPTIONS, CURRENT_CONFIG, TEXT_MODEL,
+    INPUT_DEVICE_NAME, LLM_OPTIONS, CURRENT_CONFIG, TEXT_MODEL,
     BotStates, timed_block, choose_input_samplerate,
 )
 from chat_engine import ChatEngine
@@ -818,7 +818,7 @@ class BotGUI:
                     model=TEXT_MODEL,
                     messages=self.engine.permanent_memory + [{"role": "user", "content": "你好"}],
                     stream=False,
-                    options={**OLLAMA_OPTIONS, "num_predict": 1},
+                    options={**LLM_OPTIONS, "num_predict": 1},
                     keep_alive=-1,
                 )
         except Exception as e:

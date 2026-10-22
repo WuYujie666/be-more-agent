@@ -5,7 +5,7 @@
   "llama_binary": "runtime/llama-b11796/llama-server",
   "llama_model": "cache/backend-benchmark/qwen2.5-1.5b-q4_k_m.bin",
   "llama_context": 4096,
-  "text_model": "qwen2.5:1.5b",
+  "text_model": "qwen2.5-1.5b",
   "voice_model": "piper/zh_CN-huayan-medium.onnx",
   "tts_engine": "sherpa",
   "sherpa_model_dir": "sherpa-models/vits-zh-aishell3",

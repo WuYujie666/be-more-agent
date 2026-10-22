@@ -1,0 +1,17 @@
+{
+  "chat": {
+    "text": "晚安，愿你有一个美好的夜晚，明天醒来时一切都如你所愿。",
+    "seconds": 18.61505820499997
+  },
+  "summary": {
+    "message": {
+      "role": "assistant",
+      "content": "今天我点了过多的食物而没有吃完。"
+    }
+  },
+  "summary_seconds": 1.293467889999988,
+  "memory_provider": "{\n  \"facts\": [\"我喜欢雨声。\"]\n}",
+  "memory_seconds": 2.150502323000069,
+  "method": "Cloud HTTP 502 and SDK connection failure injected; actual local llama.cpp/Qwen. No paid API requests.",
+  "limits": "Single short synthetic request per path; memory provider JSON only, not a full Mem0 extraction of a long session. Chat timing includes cold local startup; no TTS."
+}

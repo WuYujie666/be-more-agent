@@ -3,7 +3,7 @@
 # =========================================================================
 """不依赖麦克风/扬声器/whisper.cpp/sherpa，在开发机上用打字或脚本测 prompt。
 
-只需要 ollama + 目标文本模型（config.json 的 text_model）就能跑。复用
+配置 DeepSeek API 或本地 llama.cpp 后即可运行。复用
 chat_engine.ChatEngine 的全部真实逻辑（多轮状态机、prompt 拼装、[AUDIO:x]
 标签剥离、每日摘要），只把显示/TTS/播放换成控制台实现，因此调出来的 prompt
 和回复与住应用完全一致。

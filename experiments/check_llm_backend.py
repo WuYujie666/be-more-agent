@@ -17,10 +17,6 @@ with httpx.Client(transport=httpx.MockTransport(handler)) as client, patch.objec
  assert list(llm.chat(**args,stream=True))==[{'message':{'content':'晚安'}}]
  assert seen[0]['max_tokens']==80 and seen[0]['temperature']==.2
  assert seen[0]['cache_prompt'] is True
-with patch.dict(llm.CURRENT_CONFIG,{'llm_backend':'ollama'}),patch.object(llm._ollama,'chat',return_value={'ok':True}) as call:
- assert llm.chat(model='test',messages=[],options={'keep_alive':-1})=={'ok':True}
- assert 'keep_alive' not in call.call_args.kwargs['options']
-print('PASS streaming, nonstream summary, option mapping, Ollama fallback')
 with httpx.Client(transport=httpx.MockTransport(handler)) as client,patch.object(llm,'_cloud_client',client),patch.object(llm,'cloud_settings',return_value=('https://api.deepseek.com','deepseek-flash','test-only-key')),patch.dict(llm.CURRENT_CONFIG,{'llm_backend':'deepseek'}):
  assert list(llm.chat(model='local-ignored',messages=[{'role':'user','content':'你好'}],stream=True))==[{'message':{'content':'晚安'}}]
  assert seen[-1]['thinking']=={'type':'disabled'}

@@ -5,7 +5,6 @@ setuptools<81
 webrtcvad
 openwakeword
 onnxruntime
-ollama
 duckduckgo-search
 Pillow
 
