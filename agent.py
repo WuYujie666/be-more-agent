@@ -11,11 +11,11 @@
 #  This project is a generic framework and includes no copyrighted assets.
 # =========================================================================
 
-"""本地离线语音助手主程序。
+"""树莓派语音助手主程序。
 
-一轮对话的数据流水线（全部在本机运行，不联网）：
-    麦克风 → VAD 断句录音 → whisper.cpp 语音转文字（STT）
-          → Ollama 大模型流式生成回复（LLM）
+一轮对话的数据流水线（语音本地处理，文本模型可选云端）：
+    麦克风 → VAD 断句录音 → SenseVoice / whisper.cpp 语音转文字（STT）
+          → DeepSeek API / llama.cpp / Ollama 大模型流式生成回复（LLM）
           → sherpa/piper 文字转语音（TTS）→ 扬声器播放
 
 线程模型：
@@ -48,7 +48,8 @@ import scipy.signal
 import webrtcvad
 
 # --- AI ENGINES ---
-import ollama
+import llm_backend as llm
+import asr_backend
 
 # =========================================================================
 # 1. 配置 / 提示词从内部模块导入
@@ -128,6 +129,8 @@ class BotGUI:
         # State
         self.current_state = BotStates.WARMUP
         self.current_volume = 0
+        self.response_speech_end = None
+        self.response_recording_end = None
         self.animations = {}
         self.current_frame_index = 0
 
@@ -466,7 +469,7 @@ class BotGUI:
         self.engine.finalize_session_summary()
 
         try:
-            ollama.generate(model=TEXT_MODEL, prompt="", keep_alive=0)
+            llm.shutdown()
         except: pass
         try:
             sd.stop()
@@ -784,8 +787,10 @@ class BotGUI:
                     continue
 
                 user_text = self.transcribe_audio(audio_file)
-                if not user_text:
-                    self.set_state(BotStates.IDLE, "Transcription empty.")
+                if not user_text or not any(char.isalnum() for char in user_text):
+                    # Noise can produce punctuation-only ASR output; do not
+                    # display it as speech or spend a conversation turn on it.
+                    self.set_state(BotStates.IDLE, "No speech text.")
                     continue
 
                 self.add_message("user", user_text)
@@ -800,16 +805,19 @@ class BotGUI:
     def warm_up_logic(self):
         """开机预热：先空跑一次 LLM 摊销首轮延迟，再播放开场问候（顺带预热 TTS）。"""
         self.set_state(BotStates.WARMUP, "Warming up brains...")
+        if CURRENT_CONFIG.get("asr_backend", "whisper") == "sensevoice":
+            with timed_block("ASR SenseVoice load"):
+                asr_backend.warmup()
         # 不只是载入权重，还要把第1轮真实会话要用的 KV 前缀（system prompt + 历史）
         # 提前评估一遍，否则首轮 prompt-eval 会拖慢 LLM 首 Token（实测 ~16s）。
-        # 跑一次真实 ollama.chat，丢弃输出、不写入 memory，让真实第1轮退化成"第2轮"速度。
+        # 预计算系统前缀，只生成一个 token，不写入 memory。
         try:
             with timed_block("LLM warmup (prefix)"):
-                ollama.chat(
+                llm.chat(
                     model=TEXT_MODEL,
                     messages=self.engine.permanent_memory + [{"role": "user", "content": "你好"}],
                     stream=False,
-                    options=OLLAMA_OPTIONS,
+                    options={**OLLAMA_OPTIONS, "num_predict": 1},
                     keep_alive=-1,
                 )
         except Exception as e:
@@ -825,6 +833,9 @@ class BotGUI:
     def record_voice_vad(self, filename="input.wav"):
         """webrtcvad 持续监听，检测到人声起始自动开始录音，尾部静音自动停止。
         阻塞直到捕获完整一句话，返回 wav 路径；没听到则返回 None。"""
+        self.response_speech_end = None
+        self.response_recording_end = None
+        last_voice_at = None
         VAD_RATE = 16000
         FRAME_MS = 30
         frame_samples = int(VAD_RATE * FRAME_MS / 1000)  # 16000Hz×30ms = 480
@@ -879,6 +890,8 @@ class BotGUI:
                         continue
 
                     is_speech = vad.is_speech(frame.tobytes(), VAD_RATE)
+                    if is_speech:
+                        last_voice_at = time.perf_counter()
 
                     if not recording:
                         preroll.append(frame.copy())
@@ -912,6 +925,8 @@ class BotGUI:
 
         if not buffer:
             return None
+        self.response_speech_end = last_voice_at
+        self.response_recording_end = time.perf_counter()
         return self.save_audio_buffer(buffer, filename, samplerate=VAD_RATE, already_int16=True)
 
     def save_audio_buffer(self, buffer, filename, samplerate=16000, already_int16=False):
@@ -932,6 +947,14 @@ class BotGUI:
 
     def transcribe_audio(self, filename):
         print("Transcribing...", flush=True)
+        backend = CURRENT_CONFIG.get("asr_backend", "whisper")
+        if backend == "sensevoice":
+            with timed_block("STT SenseVoice"):
+                transcription = asr_backend.transcribe(filename)
+            print(f"Heard: '{transcription}'", flush=True)
+            return transcription
+        if backend != "whisper":
+            raise ValueError(f"Unknown ASR backend: {backend}")
         whisper_model = CURRENT_CONFIG.get("whisper_model", "ggml-base.en.bin")
         whisper_lang  = CURRENT_CONFIG.get("whisper_lang", "en")
         whisper_threads = CURRENT_CONFIG.get("whisper_threads", 4)
@@ -1166,6 +1189,17 @@ class BotGUI:
         with timed_block(f"TTS play [{rate}Hz {len(samples)}smp]"):
             try:
                 sd.play(samples, rate)
+                if self.response_speech_end is not None:
+                    playback_started = time.perf_counter()
+                    print(
+                        f"[TIMER] 首次提交语音播放：距末帧人声 "
+                        f"{playback_started - self.response_speech_end:.2f}s，"
+                        f"距录音结束 {playback_started - self.response_recording_end:.2f}s"
+                        "（软件计时，未计硬件输出延迟）",
+                        flush=True,
+                    )
+                    self.response_speech_end = None
+                    self.response_recording_end = None
                 while True:
                     if self.interrupted.is_set():
                         sd.stop()

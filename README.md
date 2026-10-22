@@ -1,10 +1,10 @@
 # 睡前陪伴机器人 🌙
 
-**一个跑在树莓派上、全程离线的中文语音睡前陪伴机器人**
+**一个跑在树莓派上的中文语音睡前陪伴机器人**
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue) ![Platform](https://img.shields.io/badge/Platform-Raspberry%20Pi-red) ![License](https://img.shields.io/badge/License-MIT-green)
 
-> 计算机体系结构课程项目。基于树莓派，把「语音识别 → 大模型 → 语音合成」的完整链路全部塞进一台本地设备，不联网、不上云。
+> 计算机体系结构课程项目。基于树莓派，语音识别和语音合成在本地运行，文本模型支持 DeepSeek API 或本地后端。
 
 睡前打开它，它会安静地听你说话，温柔地接住你这一天的情绪，陪你聊一会儿；聊够了就主动收尾、道一声晚安，并放上一段助眠白噪音或轻音乐，定时自动关机。第二天晚上再开机，它会用一句话回顾「昨天你聊了什么、心情如何」，再问你今天想分享些什么。
 
@@ -12,7 +12,7 @@
 
 ## ✨ 它能做什么
 
-* **全离线、纯中文**：语音识别、对话、语音合成全部在树莓派本机完成，无需联网、无 API 费用、对话内容不出设备。
+* **中文语音交互**：语音识别与合成本地运行；当前对话使用 DeepSeek API，会发送文本并产生费用，也可配置本地文本模型。
 * **免唤醒词持续监听**：用 VAD（语音活动检测）自动断句录音，检测到你开口就录、停顿就停，不用喊唤醒词、不用按键。
 * **睡前情绪梳理**：人格被设定为温和、简短，只「接住」你当下这句话，轻轻引导你说出想法与感受，但**不出主意、不深挖、不在睡前帮你解决烦心事**——提到烦心事就先「寄存」，明天再想。
 * **主动收尾 + 助眠音频**：聊够设定轮数、或听出你困了，就温柔收尾，询问（或直接播放）白噪音 / 轻音乐，并在自然放完或到达时间上限后自动关机。
@@ -24,11 +24,11 @@
 
 ## 🧠 工作原理
 
-### 单轮对话数据流水线（全本机、不联网）
+### 单轮对话数据流水线
 
 ```text
-麦克风 → webrtcvad 断句录音 → whisper.cpp 语音转文字 (STT)
-       → Ollama 大模型流式生成回复 (LLM)
+麦克风 → webrtcvad 断句录音 → SenseVoice / whisper.cpp 语音转文字 (STT)
+       → DeepSeek API / llama.cpp / Ollama 大模型流式生成回复 (LLM)
        → sherpa-onnx / piper 文字转语音 (TTS) → 扬声器播放
 ```
 
@@ -127,12 +127,15 @@ ollama pull qwen2.5:1.5b
 git clone https://github.com/ggerganov/whisper.cpp
 cd whisper.cpp
 cmake -B build && cmake --build build --config Release
-# 下载中文识别模型（程序默认用 ggml-small.bin）
+# 下载中文识别模型，并生成当前 config.json 使用的 Q8_0 版本
 bash ./models/download-ggml-model.sh small
+./build/bin/whisper-quantize models/ggml-small.bin models/ggml-small-q8_0.bin q8_0
 cd ..
 ```
 
 程序通过 `./whisper.cpp/build/bin/whisper-cli` 调用，模型放在 `./whisper.cpp/models/` 下。
+
+Whisper 回退配置使用 `ggml-small-q8_0.bin`；原始 `ggml-small.bin` 保留用于对照或回退。
 
 ### 4. 下载 sherpa-onnx 中文 TTS 模型
 
@@ -215,3 +218,51 @@ pytest
 * [Piper](https://github.com/rhasspy/piper)（Rhasspy 项目）—— 备用语音合成
 
 源代码基于 [MIT License](LICENSE) 开源。
+
+性能实验结果与人工核对的 CER 记录见 [experiments/PERFORMANCE.txt](experiments/PERFORMANCE.txt)。
+
+### 本地大模型后端：llama.cpp（回退选项）
+
+将 `config.json` 中 `llm_backend` 设为 `llama.cpp` 可使用本地后端。通过 `start_agent.sh` 或
+`venv/bin/python agent.py` 启动时，会自动启动本机服务，监听 `127.0.0.1:18080`。
+对话、预热和摘要共用后端；退出时关闭本程序启动的服务，外部启动的服务不受影响。
+运行日志在 `cache/llama-server.log`。
+
+本机运行包：`runtime/llama-b11796/`；模型：
+`cache/backend-benchmark/qwen2.5-1.5b-q4_k_m.bin`（内容为 GGUF）。
+这两项是本地文件，不随 Git 提交；新机器需要从官方来源准备它们并配置路径。
+运行包来源：https://github.com/ggml-org/llama.cpp/releases/tag/b11796
+模型 SHA-256：`183715c435899236895da3869489cc30ac241476b4971a20285b1a462818a5b4`。
+
+配置项：`llama_binary`、`llama_model` 为项目相对路径或绝对路径；
+`llama_context` 当前 4096；`llama_autostart` 当前 true；`llama_url` 当前
+`http://127.0.0.1:18080`。连接自行管理的服务时关闭 `llama_autostart`。
+服务不可用会明确报错，不会悄悄切换后端。
+
+回退：把 `llm_backend` 改为 `ollama` 后重启，继续使用 `text_model` 指定的模型。
+两种本机后端均绕过 HTTP 代理，不修改系统代理配置。
+
+### 当前大模型后端：DeepSeek Flash API
+
+在 Git 忽略的 `.env` 中填写 `CLOUD_LLM_API_KEY`、
+`CLOUD_LLM_BASE_URL=https://api.deepseek.com`、`CLOUD_LLM_MODEL=deepseek-flash`。
+同名环境变量优先于文件；该文件只读取简单 KEY=VALUE，不执行 shell 展开。
+选择云端时将 `config.json` 的 `llm_backend` 改为 `deepseek` 并重启。
+对话和摘要会发送到 DeepSeek；默认关闭深度思考，以降低语音等待。
+外部请求沿用现有网络代理，本地后端继续绕过代理。密钥不打印到日志。
+当前正式配置已设为 `deepseek`；测试结果见 `experiments/deepseek_results.json`。
+手动运行 `experiments/test_deepseek_live.py` 会调用付费 API（合成测试输入）。
+
+### 当前识别后端：SenseVoice
+
+正式链路为 SenseVoice → DeepSeek Flash → 本地 sherpa TTS，提示词保持原样。
+`asr_backend` 当前为 `sensevoice`，模型目录为 `sherpa-models/sensevoice-int8`，
+包含 `model.int8.onnx`、`tokens.txt` 和 LICENSE。识别器启动加载一次，4线程常驻。
+下载来源：https://k2-fsa.github.io/sherpa/onnx/sense-voice/pretrained.html
+输入使用录音流程产生的单声道16位PCM WAV；空音频返回空文字。
+回退识别：把 `asr_backend` 改为 `whisper` 后重启，继续使用保留的 Q8 模型。
+回退文本模型：把 `llm_backend` 改为 `llama.cpp` 后重启。两项可以独立切换。
+
+自动完整链路测试（会调用所配置的云端API并播放音频）：
+`venv/bin/python -B experiments/smoke_voice_pipeline.py`
+它使用固定3秒录音，不录麦克风，不读取历史摘要，不写入测试记忆。

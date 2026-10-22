@@ -45,3 +45,14 @@ ehthumbs.db
 whisper.cpp/
 sherpa-models/
 summaries.json
+
+# Local inference runtime and server logs
+runtime/
+cache/llama-server.log
+
+# Local embedding downloads
+cache/memory-models/
+cache/huggingface/
+
+# Public benchmark downloads (pinned by experiment script)
+cache/locomo-zh/

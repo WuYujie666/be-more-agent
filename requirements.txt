@@ -8,3 +8,6 @@ onnxruntime
 ollama
 duckduckgo-search
 Pillow
+
+httpx
+sherpa-onnx

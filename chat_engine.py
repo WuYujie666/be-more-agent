@@ -4,7 +4,7 @@
 """睡前陪伴的对话核心：多轮状态机 + LLM 流式回复 + 每日摘要。
 
 本模块刻意不 import tkinter / sounddevice / webrtcvad / PIL / sherpa，
-只依赖 ollama 和 config，因此可在任意开发机上跑（不需要麦克风/扬声器/
+通过 llm_backend 和 config 调用模型，因此可在任意开发机上跑（不需要麦克风/扬声器/
 whisper.cpp/sherpa 模型）。GUI 与文字版调试工具共用这同一套逻辑，避免
 prompt 拼装、标签剥离、状态机出现两份实现而漂移。
 
@@ -24,7 +24,7 @@ import re
 import time
 import threading
 
-import ollama
+import llm_backend as llm
 
 from config import (
     CURRENT_CONFIG, OLLAMA_OPTIONS, TEXT_MODEL, BotStates, SYSTEM_PROMPT,
@@ -204,10 +204,11 @@ class ChatEngine:
 
         full_raw = ""          # LLM 原始输出（含标签），用于最终解析与记忆
         pending = ""           # 显示缓冲：拦住可能跨 chunk 的 [AUDIO:x] 标签
-        sentence_buffer = ""   # 攒成整句再送 TTS
+        sentence_buffer = ""   # 首段允许在较长的分句处提前合成，后续仍按整句
+        first_speech_queued = False
         spoke = False
         def emit(piece):
-            nonlocal sentence_buffer, spoke
+            nonlocal sentence_buffer, spoke, first_speech_queued
             if not piece:
                 return
             if not spoke:
@@ -216,7 +217,17 @@ class ChatEngine:
                 spoke = True
             self.io.token(piece)
             sentence_buffer += piece
-            if any(p in piece for p in ".!?\n。！？"):
+            if not first_speech_queued:
+                for i, char in enumerate(sentence_buffer):
+                    if char in ".!?\n。！？" or (
+                        char in "，,；;：:"
+                        and sum(c.isalnum() or c == "_" for c in sentence_buffer[:i]) >= 8
+                    ):
+                        self.io.speak(sentence_buffer[:i + 1])
+                        sentence_buffer = sentence_buffer[i + 1:]
+                        first_speech_queued = True
+                        break
+            if first_speech_queued and any(p in sentence_buffer for p in ".!?\n。！？"):
                 self.io.speak(sentence_buffer)
                 sentence_buffer = ""
 
@@ -248,8 +259,9 @@ class ChatEngine:
                     continue
                 emit('['); pending = pending[1:]   # 只是个普通 '['
 
+        stream = None
         try:
-            stream = ollama.chat(model=TEXT_MODEL, messages=messages, stream=True, options=OLLAMA_OPTIONS)
+            stream = llm.chat(model=TEXT_MODEL, messages=messages, stream=True, options=OLLAMA_OPTIONS)
 
             _t_llm = time.perf_counter()
             _ttft_logged = False
@@ -283,6 +295,11 @@ class ChatEngine:
             self.io.set_state(BotStates.IDLE, "Brain Freeze!")
             return ""
 
+        finally:
+            # Close HTTP streaming immediately when playback is interrupted.
+            if stream is not None and hasattr(stream, "close"):
+                stream.close()
+
     # =========================================================================
     #  每日摘要
     # =========================================================================
@@ -308,7 +325,7 @@ class ChatEngine:
             _dump_messages(messages)
             summary_options = OLLAMA_OPTIONS.copy()
             summary_options.update({"temperature": 0.2, "top_p": 0.8, "num_predict": 80})
-            resp = ollama.chat(
+            resp = llm.chat(
                 model=TEXT_MODEL,
                 messages=messages,
                 stream=False, options=summary_options,
