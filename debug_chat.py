@@ -110,6 +110,7 @@ def _finish(engine):
         engine.summary_thread.join()
     else:
         engine.finalize_session_summary()
+    engine.close()
 
 
 def main(argv):

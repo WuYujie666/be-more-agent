@@ -23,6 +23,10 @@ prompt 拼装、标签剥离、状态机出现两份实现而漂移。
 import re
 import time
 import threading
+import uuid
+from pathlib import Path
+
+from memory_backend import MemoryService, memory_context
 
 import llm_backend as llm
 
@@ -49,6 +53,17 @@ class ChatEngine:
 
     def __init__(self, io):
         self.io = io
+        self.memory = None
+        self.memory_enabled = CURRENT_CONFIG.get('long_term_memory', False)
+        self.session_id = uuid.uuid4().hex
+        self._summary_lock = threading.Lock()
+        self._memory_generation = 0
+        self._memory_submitted = False
+        if self.memory_enabled:
+            try:
+                self.memory = MemoryService(CURRENT_CONFIG.get('memory_dir'))
+            except Exception as exc:
+                print(f'[MEMORY] unavailable ({type(exc).__name__})', flush=True)
 
         # --- 对话记忆 ---
         self.permanent_memory = self.load_chat_history()
@@ -70,6 +85,8 @@ class ChatEngine:
 
     def handle_turn(self, user_text):
         """按当前 phase 把一轮用户输入分派给对应处理函数。"""
+        if self._handle_forget(user_text):
+            return
         if self.phase == "ask_audio":
             self.handle_audio_answer(user_text)
         else:
@@ -177,12 +194,7 @@ class ChatEngine:
         """流式生成一段回复：实时显示气泡、按句送 TTS，并剥掉 [AUDIO:x] 控制标签。
         extra_instruction 作为系统提示拼到本轮 user 消息后（用于过渡/收尾指令）。
         返回去掉标签后的完整回复文本。"""
-        if "forget everything" in text.lower() or "reset memory" in text.lower() \
-                or "清空记忆" in text or "忘记一切" in text:
-            self.session_memory = []
-            self.permanent_memory = [{"role": "system", "content": SYSTEM_PROMPT}]
-            self.io.speak("好的，我把记忆清空了。")
-            self.io.set_state(BotStates.IDLE, "Memory Wiped")
+        if self._handle_forget(text):
             return ""
 
         self.io.set_state(BotStates.THINKING, "Thinking...")
@@ -197,7 +209,8 @@ class ChatEngine:
         # 本轮发给 LLM 的 user 消息带上临时的系统/语言提示；但存入历史的只放干净
         # 原文，避免「过渡/收尾」这类一次性指令污染后续轮次的上下文。
         call_user_msg = {"role": "user", "content": "\n".join(parts)}
-        messages = self.permanent_memory + self.session_memory + [call_user_msg]
+        context = memory_context(self.memory.search(text)) if self.memory else None
+        messages = self.permanent_memory + ([context] if context else []) + self.session_memory + [call_user_msg]
         _dump_messages(messages)
         # 用户原文进会话记忆，保证后续轮次 LLM 能看到完整的多轮历史（不只是机器人自己说过的话）。
         self.session_memory.append({"role": "user", "content": text})
@@ -294,7 +307,6 @@ class ChatEngine:
             print(f"LLM Error: {e}")
             self.io.set_state(BotStates.IDLE, "Brain Freeze!")
             return ""
-
         finally:
             # Close HTTP streaming immediately when playback is interrupted.
             if stream is not None and hasattr(stream, "close"):
@@ -304,6 +316,60 @@ class ChatEngine:
     #  每日摘要
     # =========================================================================
 
+    def _handle_forget(self, text):
+        command = re.sub(r'[\s，。！？,.!?]', '', text).lower()
+        if command not in ('清空记忆', '请清空记忆', '忘记一切', '忘记所有记忆',
+                           'forgeteverything', 'resetmemory'):
+            return False
+        self.io.set_state(BotStates.THINKING, 'Clearing memory...')
+        try:
+            with self._summary_lock:
+                if self.memory:
+                    # Ordered after all accepted session writes; exclude a new
+                    # submission until the in-memory session is cleared too.
+                    self.memory.submit('clear').result(timeout=65)
+                elif self.memory_enabled:
+                    raise RuntimeError('Long-term store unavailable')
+                self._memory_generation += 1
+                Path(CURRENT_CONFIG.get('summaries_file', 'summaries.json')).unlink(missing_ok=True)
+                self.session_memory = []
+                self.chat_user_texts = []
+                self.permanent_memory = self.load_chat_history()
+                self.summary_saved = False
+                self._memory_submitted = False
+            message = '好的，已清空保存的记忆和这次对话的上下文。'
+        except Exception as exc:
+            print(f'[MEMORY] clear failed ({type(exc).__name__})', flush=True)
+            message = '这次没能完成清空记忆，请稍后再试。'
+        self.io.bot_start()
+        self.io.token(message)
+        self.io.speak(message)
+        self.io.wait_speech()
+        self.io.set_state(BotStates.IDLE, 'Ready')
+        return True
+
+    def close(self):
+        if self.memory:
+            self.finalize_session_memory()
+            self.memory.close()
+
+    def finalize_session_memory(self):
+        """Submit the complete session once, independently of greeting summary success."""
+        with self._summary_lock:
+            if self._memory_submitted or not self.memory:
+                return
+            # Exclude the opening greeting before the first user message.
+            messages = []
+            for message in self.session_memory:
+                if message['role'] == 'user' or messages:
+                    messages.append(dict(message))
+            if not messages:
+                return
+            self._memory_submitted = True
+            # Submit while holding the same lock used by forgetting. A clear
+            # request must be ordered after this accepted write.
+            self.memory.remember_session(messages, self.session_id)
+
     def start_session_summary(self):
         """后台线程把今天对话压成一句话摘要，不阻塞助眠流程。
         线程句柄存到 self.summary_thread，便于调试工具等它跑完再退出。"""
@@ -312,10 +378,13 @@ class ChatEngine:
 
     def finalize_session_summary(self):
         """把今日对话压成一句话摘要并存档（幂等）。原始转录不保留。"""
-        if self.summary_saved:
-            return
-        self.summary_saved = True   # 先占位，避免异步线程与 safe_exit 重复生成
-        texts = [t for t in self.chat_user_texts if t.strip()]
+        self.finalize_session_memory()
+        with self._summary_lock:
+            if self.summary_saved:
+                return
+            self.summary_saved = True
+            generation = self._memory_generation
+            texts = [t for t in self.chat_user_texts if t.strip()]
         if not texts:
             return
         transcript = "\n".join(f"用户第{i}句：{t}" for i, t in enumerate(texts, start=1))
@@ -335,8 +404,10 @@ class ChatEngine:
             summary = re.sub(r"^(摘要|总结|记忆|输出)[:：]\s*", "", summary).strip()
             summary = summary.strip("「」“”\"' ")
             if summary:
-                append_summary(summary)
-                print(f"[SUMMARY] saved: {summary}", flush=True)
+                with self._summary_lock:
+                    if generation == self._memory_generation:
+                        append_summary(summary)
+                        print(f"[SUMMARY] saved: {summary}", flush=True)
         except Exception as e:
             # 生成失败就不存摘要：下次开场自然退回"晚上好。今天有什么想分享的吗？"
             print(f"[SUMMARY] generate failed: {e}", flush=True)

@@ -467,6 +467,7 @@ class BotGUI:
 
         # 退出时把今天对话压成一句话摘要存档（幂等；不保留原始转录）
         self.engine.finalize_session_summary()
+        self.engine.close()
 
         try:
             llm.shutdown()

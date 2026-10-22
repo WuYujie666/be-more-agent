@@ -266,3 +266,56 @@ pytest
 自动完整链路测试（会调用所配置的云端API并播放音频）：
 `venv/bin/python -B experiments/smoke_voice_pipeline.py`
 它使用固定3秒录音，不录麦克风，不读取历史摘要，不写入测试记忆。
+
+### 本地长期记忆（Mem0 最小版）
+
+与语音模块共用 `venv`。依赖固定为 Mem0 2.2.1、FastEmbed 0.9.0、
+OpenAI SDK 2.54.0、protobuf 6.33.6；无需独立服务或独立虚拟环境。
+安装项目依赖后，首次执行 `venv/bin/python setup_memory.py` 下载约 90 MB
+的 BGE-small-zh-v1.5。正常运行从本地加载模型，不自动下载。
+
+`config.json` 中 `long_term_memory` 控制启用，`memory_dir` 指定目录
+（默认 `runtime/memory`）。该目录的 Qdrant 保存记忆正文和向量，
+`history.db` 是 SQLite 操作历史及最近提取上下文；每个目录只对应一个用户。
+提取使用 `.env` 中已有的 DeepSeek 配置，会增加 API 调用。
+把本次会话原文交给提取模型，不导入旧摘要、不存原始录音。
+
+每轮回答前检索最多四条相关记忆；本次会话结束（进入助眠或退出）后，
+将整段会话一次性提交给后台提取，聊天过程中不逐句写入。助手发言仅用于
+理解用户上下文，提取指令要求只保存用户事实；开场问候不进入提取。
+后台忙时最多等待锁 150 ms，然后本轮跳过长期检索，继续使用会话历史。
+这不是整个检索过程的硬超时。初始化或写入失败会打印 `[MEMORY]` 提示，
+不会阻断正常聊天；后台写入可能尚未完成，异常退出可能丢失未完成写入。
+正常退出等待后台任务，超时会记录提示。
+
+可说“清空记忆”或“请清空记忆”：清除长期记录、SQLite 历史/提取上下文、
+每日摘要和当前会话上下文。先等待已接受的写入，再清空，避免旧任务恢复记忆。
+失败时不会声称已经清空。此功能不保证删除既有日志、备份或云端服务记录。
+
+暂停语音程序后，可用以下命令审核记录（同一 Qdrant 目录不能同时打开）：
+
+```bash
+venv/bin/python memory_tool.py list
+venv/bin/python memory_tool.py search '我喜欢什么声音？'
+venv/bin/python memory_tool.py history <memory_id>
+venv/bin/python memory_tool.py update <memory_id> '修订后的事实'
+venv/bin/python memory_tool.py delete <memory_id>
+```
+
+工具的单条删除也清除该 ID 的 SQLite 历史及提取最近上下文；不会语义追踪
+其他记录或每日摘要中的同一事实。工具 `clear` 仅清空长期库；完整清空请用
+对话中的“清空记忆”。旧版 `memory.json` 当前不加载，也不属于本模块数据。
+
+注意：这个 Mem0 版本的自动提取采用追加方式，变化前后的记录可能同时返回；
+回答结合记录时间和变化描述判断。显式 `update` 才是改写并记录历史。
+目前不是 proposal 中“唯一当前版本”的严格事实库，复杂纠错仍需继续评测。
+第一版使用中文向量检索，关闭额外的英文 BM25 编码器，不装 spaCy/知识图谱。
+
+验证：`venv/bin/python -m unittest test_memory -v`（离线），以及
+`venv/bin/python experiments/check_memory.py --live`（虚构对话，会调用 DeepSeek）。
+结果见 `experiments/memory_results.json`，测试不接触真实用户记忆。
+
+25 秒录音记忆验收：`venv/bin/python -B experiments/check_memory_audio.py --live`。
+使用独立临时库，跨进程验证保存、追问和清空；会调用付费 API，不运行 GUI/TTS。
+结果见 `experiments/memory_audio_results.json`。LoCoMo 小样本结果见
+`experiments/locomo_session/REPORT.txt`，自动评分较宽松，不代表完整回答准确率。
