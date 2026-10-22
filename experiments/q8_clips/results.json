@@ -1,0 +1,302 @@
+[
+  {
+    "trial": 0,
+    "clip": "3s",
+    "start": 0,
+    "end": 3,
+    "variant": "fp16",
+    "seconds": 12.285696263999853,
+    "text": "我是说今天我吃了饭",
+    "sha256_audio": "466e4018a80a47d5f42af84337c54171883a29dd3344372b6e51c45e46a82843"
+  },
+  {
+    "trial": 0,
+    "clip": "3s",
+    "start": 0,
+    "end": 3,
+    "variant": "q8",
+    "seconds": 7.085183009001412,
+    "text": "我是说今天我吃了饭",
+    "sha256_audio": "466e4018a80a47d5f42af84337c54171883a29dd3344372b6e51c45e46a82843"
+  },
+  {
+    "trial": 0,
+    "clip": "5s",
+    "start": 3,
+    "end": 8,
+    "variant": "q8",
+    "seconds": 4.920390570001473,
+    "text": "我说一份米线一份蛋糕。",
+    "sha256_audio": "ea8f28c2f9ace3052347b387f1c07a460ae872bb3fb03a78f95c630ad8b8e93e"
+  },
+  {
+    "trial": 0,
+    "clip": "5s",
+    "start": 3,
+    "end": 8,
+    "variant": "fp16",
+    "seconds": 7.4472420860001876,
+    "text": "我说一份米线一份蛋糕。",
+    "sha256_audio": "ea8f28c2f9ace3052347b387f1c07a460ae872bb3fb03a78f95c630ad8b8e93e"
+  },
+  {
+    "trial": 0,
+    "clip": "7s",
+    "start": 8,
+    "end": 15,
+    "variant": "fp16",
+    "seconds": 7.583287702000234,
+    "text": "一份凄烈的西兰花。最后呢,我觉得。",
+    "sha256_audio": "478eb408789b49ff24444cec07eae3a9724f98e9a87ffcde470718847ceef176"
+  },
+  {
+    "trial": 0,
+    "clip": "7s",
+    "start": 8,
+    "end": 15,
+    "variant": "q8",
+    "seconds": 5.1279890240002715,
+    "text": "一份凄烈的西兰花。最后呢,我觉得。",
+    "sha256_audio": "478eb408789b49ff24444cec07eae3a9724f98e9a87ffcde470718847ceef176"
+  },
+  {
+    "trial": 0,
+    "clip": "10s",
+    "start": 13,
+    "end": 23,
+    "variant": "q8",
+    "seconds": 5.417881239000053,
+    "text": "最后我觉得点了太多了,吃得太饱了,然后我就回庆市了,没有吃完,",
+    "sha256_audio": "89286c3cbfb644b405efbeb7f9c6c919f232a99acbf293ffa5afc05ff85c69dd"
+  },
+  {
+    "trial": 0,
+    "clip": "10s",
+    "start": 13,
+    "end": 23,
+    "variant": "fp16",
+    "seconds": 8.412739071000033,
+    "text": "最后我觉得点了太多了,吃得太饱了,然后我就回庆市了,没有吃完,",
+    "sha256_audio": "89286c3cbfb644b405efbeb7f9c6c919f232a99acbf293ffa5afc05ff85c69dd"
+  },
+  {
+    "trial": 0,
+    "clip": "13s",
+    "start": 0,
+    "end": 13,
+    "variant": "fp16",
+    "seconds": 8.91269165400081,
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43"
+  },
+  {
+    "trial": 0,
+    "clip": "13s",
+    "start": 0,
+    "end": 13,
+    "variant": "q8",
+    "seconds": 5.893104665999999,
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43"
+  },
+  {
+    "trial": 1,
+    "clip": "3s",
+    "start": 0,
+    "end": 3,
+    "variant": "q8",
+    "seconds": 4.7617228210001485,
+    "text": "我是说今天我吃了饭",
+    "sha256_audio": "466e4018a80a47d5f42af84337c54171883a29dd3344372b6e51c45e46a82843"
+  },
+  {
+    "trial": 1,
+    "clip": "3s",
+    "start": 0,
+    "end": 3,
+    "variant": "fp16",
+    "seconds": 7.036809146999076,
+    "text": "我是说今天我吃了饭",
+    "sha256_audio": "466e4018a80a47d5f42af84337c54171883a29dd3344372b6e51c45e46a82843"
+  },
+  {
+    "trial": 1,
+    "clip": "5s",
+    "start": 3,
+    "end": 8,
+    "variant": "fp16",
+    "seconds": 7.249180933999014,
+    "text": "我说一份米线一份蛋糕。",
+    "sha256_audio": "ea8f28c2f9ace3052347b387f1c07a460ae872bb3fb03a78f95c630ad8b8e93e"
+  },
+  {
+    "trial": 1,
+    "clip": "5s",
+    "start": 3,
+    "end": 8,
+    "variant": "q8",
+    "seconds": 4.927331017999677,
+    "text": "我说一份米线一份蛋糕。",
+    "sha256_audio": "ea8f28c2f9ace3052347b387f1c07a460ae872bb3fb03a78f95c630ad8b8e93e"
+  },
+  {
+    "trial": 1,
+    "clip": "7s",
+    "start": 8,
+    "end": 15,
+    "variant": "q8",
+    "seconds": 5.126981368999623,
+    "text": "一份凄烈的西兰花。最后呢,我觉得。",
+    "sha256_audio": "478eb408789b49ff24444cec07eae3a9724f98e9a87ffcde470718847ceef176"
+  },
+  {
+    "trial": 1,
+    "clip": "7s",
+    "start": 8,
+    "end": 15,
+    "variant": "fp16",
+    "seconds": 7.631727381000019,
+    "text": "一份凄烈的西兰花。最后呢,我觉得。",
+    "sha256_audio": "478eb408789b49ff24444cec07eae3a9724f98e9a87ffcde470718847ceef176"
+  },
+  {
+    "trial": 1,
+    "clip": "10s",
+    "start": 13,
+    "end": 23,
+    "variant": "fp16",
+    "seconds": 8.003578800000469,
+    "text": "最后我觉得点了太多了,吃得太饱了,然后我就回庆市了,没有吃完,",
+    "sha256_audio": "89286c3cbfb644b405efbeb7f9c6c919f232a99acbf293ffa5afc05ff85c69dd"
+  },
+  {
+    "trial": 1,
+    "clip": "10s",
+    "start": 13,
+    "end": 23,
+    "variant": "q8",
+    "seconds": 5.467341567000403,
+    "text": "最后我觉得点了太多了,吃得太饱了,然后我就回庆市了,没有吃完,",
+    "sha256_audio": "89286c3cbfb644b405efbeb7f9c6c919f232a99acbf293ffa5afc05ff85c69dd"
+  },
+  {
+    "trial": 1,
+    "clip": "13s",
+    "start": 0,
+    "end": 13,
+    "variant": "q8",
+    "seconds": 5.9019568280000385,
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43"
+  },
+  {
+    "trial": 1,
+    "clip": "13s",
+    "start": 0,
+    "end": 13,
+    "variant": "fp16",
+    "seconds": 8.847706540000218,
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43"
+  },
+  {
+    "trial": 2,
+    "clip": "3s",
+    "start": 0,
+    "end": 3,
+    "variant": "fp16",
+    "seconds": 7.036586730000636,
+    "text": "我是说今天我吃了饭",
+    "sha256_audio": "466e4018a80a47d5f42af84337c54171883a29dd3344372b6e51c45e46a82843"
+  },
+  {
+    "trial": 2,
+    "clip": "3s",
+    "start": 0,
+    "end": 3,
+    "variant": "q8",
+    "seconds": 4.756910971000252,
+    "text": "我是说今天我吃了饭",
+    "sha256_audio": "466e4018a80a47d5f42af84337c54171883a29dd3344372b6e51c45e46a82843"
+  },
+  {
+    "trial": 2,
+    "clip": "5s",
+    "start": 3,
+    "end": 8,
+    "variant": "q8",
+    "seconds": 5.003606188998674,
+    "text": "我说一份米线一份蛋糕。",
+    "sha256_audio": "ea8f28c2f9ace3052347b387f1c07a460ae872bb3fb03a78f95c630ad8b8e93e"
+  },
+  {
+    "trial": 2,
+    "clip": "5s",
+    "start": 3,
+    "end": 8,
+    "variant": "fp16",
+    "seconds": 7.244745736999903,
+    "text": "我说一份米线一份蛋糕。",
+    "sha256_audio": "ea8f28c2f9ace3052347b387f1c07a460ae872bb3fb03a78f95c630ad8b8e93e"
+  },
+  {
+    "trial": 2,
+    "clip": "7s",
+    "start": 8,
+    "end": 15,
+    "variant": "fp16",
+    "seconds": 7.5242753100010304,
+    "text": "一份凄烈的西兰花。最后呢,我觉得。",
+    "sha256_audio": "478eb408789b49ff24444cec07eae3a9724f98e9a87ffcde470718847ceef176"
+  },
+  {
+    "trial": 2,
+    "clip": "7s",
+    "start": 8,
+    "end": 15,
+    "variant": "q8",
+    "seconds": 5.078215782999905,
+    "text": "一份凄烈的西兰花。最后呢,我觉得。",
+    "sha256_audio": "478eb408789b49ff24444cec07eae3a9724f98e9a87ffcde470718847ceef176"
+  },
+  {
+    "trial": 2,
+    "clip": "10s",
+    "start": 13,
+    "end": 23,
+    "variant": "q8",
+    "seconds": 5.539928378999321,
+    "text": "最后我觉得点了太多了,吃得太饱了,然后我就回庆市了,没有吃完,",
+    "sha256_audio": "89286c3cbfb644b405efbeb7f9c6c919f232a99acbf293ffa5afc05ff85c69dd"
+  },
+  {
+    "trial": 2,
+    "clip": "10s",
+    "start": 13,
+    "end": 23,
+    "variant": "fp16",
+    "seconds": 8.149314713999047,
+    "text": "最后我觉得点了太多了,吃得太饱了,然后我就回庆市了,没有吃完,",
+    "sha256_audio": "89286c3cbfb644b405efbeb7f9c6c919f232a99acbf293ffa5afc05ff85c69dd"
+  },
+  {
+    "trial": 2,
+    "clip": "13s",
+    "start": 0,
+    "end": 13,
+    "variant": "fp16",
+    "seconds": 8.776099593000254,
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43"
+  },
+  {
+    "trial": 2,
+    "clip": "13s",
+    "start": 0,
+    "end": 13,
+    "variant": "q8",
+    "seconds": 5.8826660360009555,
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43"
+  }
+]

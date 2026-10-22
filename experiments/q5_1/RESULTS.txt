@@ -1,0 +1,65 @@
+ARCHIVED EXPERIMENT — implementation source removed on user request (2026-10-21).
+Results below describe historical runs. Reproduction commands below are historical
+and no longer executable from this cleaned project. No experimental backend deployed.
+Current deployment: standard Q8_0. See ../PERFORMANCE.txt for current status.
+
+Q5_1 high-bit unpacking experiment — 2026-10-21
+
+Outcome: none of the three candidates improved performance. Do not deploy.
+The production Whisper source, object files, libraries and config are unchanged.
+
+Machine/build:
+  Raspberry Pi Cortex-A76, four cores; existing Release/O3 native build.
+  Candidate changes only ggml_vec_dot_q5_1_q8_1 high-bit expansion on AArch64.
+  Other arithmetic and scalar tail remain unchanged.
+
+Candidates:
+  shift: byte replication with NEON TBL, lane shifts, mask bit 4.
+  test:  byte replication with NEON TBL, bit test, mask bit 4.
+  broadcast: scalar byte extraction/broadcast, lane shifts, mask bit 4.
+
+Correctness:
+  Each candidate: 76,536 cases with bit-identical outputs vs original.
+  11,000 random cases across 1,2,3,4,5,7,8,24,25,48,96 blocks.
+  65,536 high-bit cases cover each byte value, byte position, both vector
+  blocks and every Q8 basis lane. These also have an independent expected
+  scalar result. Includes odd block counts exercising the scalar tail.
+  This is strong coverage, not an exhaustive proof for all floating inputs.
+
+Hot-cache single-thread kernel benchmark, 300,000 calls per round,
+four rounds alternating baseline/candidate order (representative ns/call):
+                    n=768         n=3072
+  Original          123           479
+  shift             146           566
+  test              156           606
+  broadcast         170           664
+  These measurements do not model the complete matrix workload/cache behavior.
+
+Full recognition, original Q5_1 vs least-slow candidate (shift):
+  Audio                    Original total  Candidate total  Original encode  Candidate encode
+  input.wav                9.527s          10.621s          8.757s           9.845s
+  input_test_data.wav       11.693s         12.665s          8.781s           9.770s
+  Same executable/model/4 threads/Chinese/beam=1/best-of=1/prompt.
+  Outputs identical on both recordings. One run per audio/variant; not a
+  statistical latency benchmark. input.wav is runtime data and may change.
+
+Interpretation:
+  Avoiding scalar lookup loads by introducing vector operations is not enough
+  to win on this CPU. This does not measure a separate "unpacking time" and
+  does not rule out other kernels. A future experiment should amortize
+  unpacking over multiple output values or prepack weights, with correctness,
+  memory and end-to-end timing checks. No such change is implemented here.
+
+Reproduce from project root, with the existing CMake build available:
+  python3 experiments/q5_1/build_variant.py /tmp/q5-vector shift
+  python3 experiments/q5_1/build_variant.py /tmp/q5-test test
+  python3 experiments/q5_1/build_variant.py /tmp/q5-broadcast broadcast
+  g++ -O3 -std=c++17 experiments/q5_1/check_kernel.cpp -ldl -o /tmp/check-q5-kernel
+  /tmp/check-q5-kernel "$PWD/whisper.cpp/build/ggml/src/libggml-cpu.so.0" /tmp/q5-vector/libggml-cpu.so.0
+  Repeat the check with each candidate library.
+
+For full recognition, use the ordinary whisper-cli command as baseline and
+prefix the candidate invocation with LD_LIBRARY_PATH=/tmp/q5-vector.
+Confirm library selection with ldd. Do not set this variable globally or use
+the experimental library in the robot. All builds go to the supplied /tmp
+directory, and reuse the existing build's compile/link settings and objects.

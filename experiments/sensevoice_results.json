@@ -1,0 +1,129 @@
+{
+  "model": "/tmp/agent-backends/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17",
+  "engine": "sherpa-onnx SenseVoice INT8 (not FunASR Python runtime)",
+  "threads": 4,
+  "model_load_seconds": 2.2296168979992217,
+  "max_rss_kib": 396208,
+  "rows": [
+    {
+      "trial": 0,
+      "clip": "3s",
+      "seconds": 0.16035839799951646,
+      "text": "我是说今天我吃了饭。",
+      "errors": 0,
+      "reference_chars": 9
+    },
+    {
+      "trial": 0,
+      "clip": "5s",
+      "seconds": 0.23689132400068047,
+      "text": "我吃了那个一份米线，一份蛋羹。",
+      "errors": 5,
+      "reference_chars": 10
+    },
+    {
+      "trial": 0,
+      "clip": "7s",
+      "seconds": 0.346268171999327,
+      "text": "一份西红柿炒鸡蛋，一份嗯西兰花。最后呢我觉得。",
+      "errors": 9,
+      "reference_chars": 11
+    },
+    {
+      "trial": 0,
+      "clip": "10s",
+      "seconds": 0.5291319330008264,
+      "text": "最后呢我觉得这个点的太多了，然后吃的太饱了，然后我就回寝室了，，没有吃完，然后。",
+      "errors": 9,
+      "reference_chars": 27
+    },
+    {
+      "trial": 0,
+      "clip": "13s",
+      "seconds": 0.8926391179993516,
+      "text": "我是说今天我吃了饭，我吃了那个一份米线，一份蛋羹，一份西红柿炒鸡蛋，一份嗯西兰花。",
+      "errors": 1,
+      "reference_chars": 35
+    },
+    {
+      "trial": 1,
+      "clip": "13s",
+      "seconds": 0.9667747259991302,
+      "text": "我是说今天我吃了饭，我吃了那个一份米线，一份蛋羹，一份西红柿炒鸡蛋，一份嗯西兰花。",
+      "errors": 1,
+      "reference_chars": 35
+    },
+    {
+      "trial": 1,
+      "clip": "10s",
+      "seconds": 0.6369591139991826,
+      "text": "最后呢我觉得这个点的太多了，然后吃的太饱了，然后我就回寝室了，，没有吃完，然后。",
+      "errors": 9,
+      "reference_chars": 27
+    },
+    {
+      "trial": 1,
+      "clip": "7s",
+      "seconds": 0.42219176500111644,
+      "text": "一份西红柿炒鸡蛋，一份嗯西兰花。最后呢我觉得。",
+      "errors": 9,
+      "reference_chars": 11
+    },
+    {
+      "trial": 1,
+      "clip": "5s",
+      "seconds": 0.2635419809994346,
+      "text": "我吃了那个一份米线，一份蛋羹。",
+      "errors": 5,
+      "reference_chars": 10
+    },
+    {
+      "trial": 1,
+      "clip": "3s",
+      "seconds": 0.16851236100046663,
+      "text": "我是说今天我吃了饭。",
+      "errors": 0,
+      "reference_chars": 9
+    },
+    {
+      "trial": 2,
+      "clip": "3s",
+      "seconds": 0.15623493600105576,
+      "text": "我是说今天我吃了饭。",
+      "errors": 0,
+      "reference_chars": 9
+    },
+    {
+      "trial": 2,
+      "clip": "5s",
+      "seconds": 0.2536870780004392,
+      "text": "我吃了那个一份米线，一份蛋羹。",
+      "errors": 5,
+      "reference_chars": 10
+    },
+    {
+      "trial": 2,
+      "clip": "7s",
+      "seconds": 0.3992657809994853,
+      "text": "一份西红柿炒鸡蛋，一份嗯西兰花。最后呢我觉得。",
+      "errors": 9,
+      "reference_chars": 11
+    },
+    {
+      "trial": 2,
+      "clip": "10s",
+      "seconds": 0.6499507469998207,
+      "text": "最后呢我觉得这个点的太多了，然后吃的太饱了，然后我就回寝室了，，没有吃完，然后。",
+      "errors": 9,
+      "reference_chars": 27
+    },
+    {
+      "trial": 2,
+      "clip": "13s",
+      "seconds": 0.9395926369998051,
+      "text": "我是说今天我吃了饭，我吃了那个一份米线，一份蛋羹，一份西红柿炒鸡蛋，一份嗯西兰花。",
+      "errors": 1,
+      "reference_chars": 35
+    }
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "normalization": "NFKC; remove Unicode punctuation and whitespace",
+  "formula": "Levenshtein character edit distance / reference characters",
+  "notes": "Each clip counted once, not three repetitions. Clips overlap: not independent speech samples. User reviewed all text and supplied corrections.",
+  "scores": [
+    {
+      "clip": "3s",
+      "variant": "fp16",
+      "reference": "我是说今天我吃了饭",
+      "hypothesis": "我是说今天我吃了饭",
+      "reference_chars": 9,
+      "errors": 0,
+      "cer": 0.0,
+      "filler_tolerant_errors": 0,
+      "filler_tolerant_reference_chars": 9,
+      "filler_tolerant_cer": 0.0
+    },
+    {
+      "clip": "3s",
+      "variant": "q8",
+      "reference": "我是说今天我吃了饭",
+      "hypothesis": "我是说今天我吃了饭",
+      "reference_chars": 9,
+      "errors": 0,
+      "cer": 0.0,
+      "filler_tolerant_errors": 0,
+      "filler_tolerant_reference_chars": 9,
+      "filler_tolerant_cer": 0.0
+    },
+    {
+      "clip": "5s",
+      "variant": "fp16",
+      "reference": "我说一份米线一份蛋糕。",
+      "hypothesis": "我说一份米线一份蛋糕。",
+      "reference_chars": 10,
+      "errors": 0,
+      "cer": 0.0,
+      "filler_tolerant_errors": 0,
+      "filler_tolerant_reference_chars": 10,
+      "filler_tolerant_cer": 0.0
+    },
+    {
+      "clip": "5s",
+      "variant": "q8",
+      "reference": "我说一份米线一份蛋糕。",
+      "hypothesis": "我说一份米线一份蛋糕。",
+      "reference_chars": 10,
+      "errors": 0,
+      "cer": 0.0,
+      "filler_tolerant_errors": 0,
+      "filler_tolerant_reference_chars": 10,
+      "filler_tolerant_cer": 0.0
+    },
+    {
+      "clip": "7s",
+      "variant": "fp16",
+      "reference": "一份西兰花。最后呢,我觉得。",
+      "hypothesis": "一份凄烈的西兰花。最后呢,我觉得。",
+      "reference_chars": 11,
+      "errors": 3,
+      "cer": 0.2727272727272727,
+      "filler_tolerant_errors": 3,
+      "filler_tolerant_reference_chars": 11,
+      "filler_tolerant_cer": 0.2727272727272727
+    },
+    {
+      "clip": "7s",
+      "variant": "q8",
+      "reference": "一份西兰花。最后呢,我觉得。",
+      "hypothesis": "一份凄烈的西兰花。最后呢,我觉得。",
+      "reference_chars": 11,
+      "errors": 3,
+      "cer": 0.2727272727272727,
+      "filler_tolerant_errors": 3,
+      "filler_tolerant_reference_chars": 11,
+      "filler_tolerant_cer": 0.2727272727272727
+    },
+    {
+      "clip": "10s",
+      "variant": "fp16",
+      "reference": "最后我觉得点了太多了,吃得太饱了,然后我就回寝室了,没有吃完,",
+      "hypothesis": "最后我觉得点了太多了,吃得太饱了,然后我就回庆市了,没有吃完,",
+      "reference_chars": 27,
+      "errors": 2,
+      "cer": 0.07407407407407407,
+      "filler_tolerant_errors": 2,
+      "filler_tolerant_reference_chars": 27,
+      "filler_tolerant_cer": 0.07407407407407407
+    },
+    {
+      "clip": "10s",
+      "variant": "q8",
+      "reference": "最后我觉得点了太多了,吃得太饱了,然后我就回寝室了,没有吃完,",
+      "hypothesis": "最后我觉得点了太多了,吃得太饱了,然后我就回庆市了,没有吃完,",
+      "reference_chars": 27,
+      "errors": 2,
+      "cer": 0.07407407407407407,
+      "filler_tolerant_errors": 2,
+      "filler_tolerant_reference_chars": 27,
+      "filler_tolerant_cer": 0.07407407407407407
+    },
+    {
+      "clip": "13s",
+      "variant": "fp16",
+      "reference": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红柿炒鸡蛋,一份嗯西兰花。",
+      "hypothesis": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+      "reference_chars": 36,
+      "errors": 3,
+      "cer": 0.08333333333333333,
+      "filler_tolerant_errors": 2,
+      "filler_tolerant_reference_chars": 35,
+      "filler_tolerant_cer": 0.05714285714285714
+    },
+    {
+      "clip": "13s",
+      "variant": "q8",
+      "reference": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红柿炒鸡蛋,一份嗯西兰花。",
+      "hypothesis": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+      "reference_chars": 36,
+      "errors": 3,
+      "cer": 0.08333333333333333,
+      "filler_tolerant_errors": 2,
+      "filler_tolerant_reference_chars": 35,
+      "filler_tolerant_cer": 0.05714285714285714
+    }
+  ],
+  "totals": {
+    "fp16": {
+      "errors": 8,
+      "reference_chars": 93,
+      "cer": 0.08602150537634409,
+      "filler_tolerant_errors": 7,
+      "filler_tolerant_reference_chars": 92,
+      "filler_tolerant_cer": 0.07608695652173914
+    },
+    "q8": {
+      "errors": 8,
+      "reference_chars": 93,
+      "cer": 0.08602150537634409,
+      "filler_tolerant_errors": 7,
+      "filler_tolerant_reference_chars": 92,
+      "filler_tolerant_cer": 0.07608695652173914
+    }
+  }
+}

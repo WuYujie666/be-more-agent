@@ -1,0 +1,19 @@
+Five excerpts from input_test_data.wav; 3 rounds each, alternating order.
+Times include process startup, model load, and transcription; no microphone/VAD/LLM/TTS.
+Same-source excerpts overlap and may cut words. No manual ground truth yet.
+CPU observed 2.4 GHz, 60.4 C, throttled=0x0. First 3s pair showed cold-start variation; all raw runs retained.
+
+3s source=0-3s FP16=7.037s Q8=4.762s reduction=32.3% unique_transcripts=1
+我是说今天我吃了饭
+
+5s source=3-8s FP16=7.249s Q8=4.927s reduction=32.0% unique_transcripts=1
+我说一份米线一份蛋糕。
+
+7s source=8-15s FP16=7.583s Q8=5.127s reduction=32.4% unique_transcripts=1
+一份凄烈的西兰花。最后呢,我觉得。
+
+10s source=13-23s FP16=8.149s Q8=5.467s reduction=32.9% unique_transcripts=1
+最后我觉得点了太多了,吃得太饱了,然后我就回庆市了,没有吃完,
+
+13s source=0-13s FP16=8.848s Q8=5.893s reduction=33.4% unique_transcripts=1
+我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。

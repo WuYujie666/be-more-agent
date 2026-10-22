@@ -1,0 +1,276 @@
+性能优化记录（2026-10-21，树莓派 Cortex-A76 / 4 核 / 8 GiB）
+
+当前正式实现
+- config.json 使用标准 Whisper-small Q8_0，原始 FP16 保留；未部署实验性 GGML 库。
+- chat_engine.py 首段在句末标点，或积累至少 8 个字母/数字/下划线字符后的
+  中英文逗号、分号、冒号处送入 TTS；后续保持原有整句合成逻辑。
+- check_first_clause.py 的 32 个流式案例通过：不同 chunk 边界、控制标签跨块、
+  尾部无标点、短分句、文字无丢失/重复。主程序当前停止，下一次启动加载新逻辑。
+- 软件首播放计时已加入 agent.py；不包含设备的实际声学输出延迟。
+- 代理不全局关闭；访问本地 Ollama 绕过代理，避免原有 502。
+
+ASR：五段人工核对录音，FP16 vs Q8
+来源：input_test_data.wav；片段重叠，不是五个独立说话样本。
+每段每模型三次交替运行；4线程/中文/beam=1/best-of=1/相同提示词。
+耗时包含启动进程与加载，不含 VAD、LLM、TTS；取三次中位数。
+长度  原音频位置    FP16秒  Q8秒   耗时降低   CER（两者相同）
+3s    0-3s          7.037   4.762   32.3%     0/9 = 0%
+5s    3-8s          7.249   4.927   32.0%     0/10 = 0%
+7s    8-15s         7.583   5.127   32.4%     3/11 = 27.27%
+10s   13-23s        8.149   5.467   32.9%     2/27 = 7.41%
+13s   0-13s         8.848   5.893   33.4%     2/35 = 5.71%
+五段每段只计一次：CER = 7/92 = 7.61%，不是各行百分比的简单平均。
+CER = 字符级 Levenshtein 编辑距离 / 人工参考字符数；NFKC 归一化，忽略标点和空白。
+用户确认未提出的文字正确；删除多识别的“凄烈的”，庆市→寝室，西湖式→西红柿。
+所有片段两模型输出相同、三轮稳定；这只证明该小样本未出现量化新增错误。
+人工转写与音频哈希：q8_clips/references.json；逐项CER：q8_clips/cer.json。
+原始音频/日志/30次结果均保留在 q8_clips/。
+首次3秒测试有明显加载波动（FP16 12.286秒，Q8 7.085秒），未隐藏，使用中位数。
+复现：venv/bin/python -B experiments/benchmark_q8_clips.py
+评分：venv/bin/python -B experiments/score_cer.py
+
+早期路线筛选（13秒 / 25.65秒，总耗时，三轮中位数）
+FP16                 8.573 / 10.665 秒
+原版 Q5_1           10.362 / 11.809 秒
+Q5 解包复用          8.757 / 10.168 秒
+Q5 权重预展开        9.072 / 10.237 秒，额外约91MiB预展开权重
+FP16编码器+Q5解码器  7.952 / 9.408 秒，需专用模型加载器
+标准 Q8_0            5.750 / 7.243 秒，最终采用
+矩阵复用/预展开比Q5快，但不如Q8；混合模型同样不如Q8且增加维护负担。
+Q5高位展开 shift/test/broadcast 三种改写全部更慢；内核约慢18%-39%。
+失败实现的数值正确性曾通过76,536个用例/候选；后续复用方案176,000个内核
+用例及384个矩阵用例/方案通过，但正确不等于性能好。
+详情：q5_1/RESULTS.txt、q5_1/ROUTES.txt、q5_1/route_results.json。
+源码已按用户要求移除，报告中的旧复现命令仅作历史记录。
+
+LLM+TTS 首段提前合成
+真实 Ollama + sherpa；两条固定文字输入，4种组合、2轮，共16次；第二轮反转顺序。
+同一输入各组合回复文字相同。计时从发起LLM请求至首段音频准备好。
+不含ASR/VAD/实际播放；只合成首段，不代表全部语音播放耗时。
+配置                 长首句   短首句“哦？” （秒，2次中位数）
+整句 LLM4/TTS4        9.918    2.863
+提前 LLM4/TTS4        5.176    3.125
+提前 LLM3/TTS1        7.839    4.615
+提前 LLM2/TTS2        7.249    3.938
+长首句准备时间下降47.8%；短首句无收益。保留4线程。
+一次真人A/B试听反馈“没听出任何区别”；仅该例，无大样本听感结论。
+原始数据 first_audio_results.json；脚本 benchmark_first_audio.py。
+
+进一步尝试：Whisper缩短音频上下文（未采用）
+使用Q8，--audio-ctx=(片段秒数+2)*50；每段仅一次探索性测试。
+3/5/7/10/13秒耗时：1.216/1.574/1.967/2.593/3.181秒。
+对应字符错误：1/0/9/2/4，总计16/92=17.39%，基线7.61%。
+虽然更快，当前策略损害这批样本准确率，不能直接部署。
+原始命令/日志/文本：audio_context_pilot.json；无新增正式代码。
+
+目录维护
+仅保留可复用的当前基准脚本、人工参考、检查与原始数据。
+CLEANUP.txt 记录移除的8个未采用Q5源码/构建脚本。
+后续候选：替代ASR与LLM后端独立试验，保持正式配置可回退。
+
+替代ASR首轮：SenseVoiceSmall INT8 / sherpa-onnx / 4线程 / zh / ITN开启
+模型加载 2.230s；峰值RSS 386.9MiB。
+以下为模型已加载时的耗时，包含读取音频；不能直接与Whisper含加载耗时作纯后端加速比。
+3s: median=0.160s CER=0/9 text=我是说今天我吃了饭。
+5s: median=0.254s CER=5/10 text=我吃了那个一份米线，一份蛋羹。
+7s: median=0.399s CER=9/11 text=一份西红柿炒鸡蛋，一份嗯西兰花。最后呢我觉得。
+10s: median=0.637s CER=9/27 text=最后呢我觉得这个点的太多了，然后吃的太饱了，然后我就回寝室了，，没有吃完，然后。
+13s: median=0.940s CER=1/35 text=我是说今天我吃了饭，我吃了那个一份米线，一份蛋羹，一份西红柿炒鸡蛋，一份嗯西兰花。
+合计 CER=24/92=26.09%；基于用户此前确认的同一参考，不擅自调整。
+速度有潜力；多出的内容/语气词与原参考有差异，保留文字供复核，不直接部署。
+这不是FunASR Python运行时的测试；是SenseVoice模型的ONNX版本。
+模型来源：https://k2-fsa.github.io/sherpa/onnx/sense-voice/pretrained.html
+模型下载目录 /tmp/agent-backends/，重启后可能清除；原始结果 sensevoice_results.json。
+
+常驻 Whisper-server Q8 对照（未部署）：
+启动参数：-m whisper.cpp/models/ggml-small-q8_0.bin -l zh -t 4 -bs 1 -bo 1
+--prompt 以下是普通话的句子。 --host 127.0.0.1 --port 18081
+每段3次；耗时含本机HTTP和读取音频，不含服务启动/加载。
+注意：现有server默认启用token_timestamps并设置max_len=60，与CLI默认不同，
+这是实际服务路线试验，不是严格仅排除模型加载的微基准。
+3s: 4.424s, errors=0
+5s: 4.607s, errors=0
+7s: 4.868s, errors=3
+10s: 5.127s, errors=2
+13s: 5.599s, errors=2
+归一化文本与原CLI一致，CER仍为7/92=7.61%；省时数百毫秒，收益小于换ASR模型的潜力。
+服务已停止；原始数据 whisper_resident_results.json。
+
+早期性能定位补充
+Release -O3 / Cortex-A76指令优化已经开启，无观测到降频。
+Q5编码循环采样约68.73% CPU cycles位于ggml_vec_dot_q5_1_q8_1，
+14.15%注意力，3.60%加法，2.26%输入量化。采样包含预热/初始化，
+不能把68.73%理解为单独“拆位时间”，也不是端到端墙钟时间占比。
+1024矩阵基准：FP16 87.9 GFLOPS，Q5_1 47.4，Q8_0 85.1。
+Q8实际使用CPU_REPACK；Q5实验不具备同等重排优化路径。
+较早真实机器人FP16轮次曾观察首播放13.40-19.46秒；输入/历史/回复不同，
+只能用于定位瓶颈，不能与后来的固定输入测试直接相减计算优化收益。
+
+资源与清理策略
+下载前/过程中核查：RAM约7.9GiB，可用5.7GiB；磁盘空闲6.7GiB；
+/tmp为4GiB tmpfs（占用内存）。当时swap占用713MiB，但vmstat连续采样si/so为0。
+SenseVoice约228MiB；llama运行包约40MiB；重复Qwen权重约940MiB放磁盘cache，
+原因是Ollama服务模型目录当前用户不可读；未修改服务目录权限。
+测试模型与服务未替换正式Q8/Ollama配置；大文件被gitignore排除。
+
+LLM替代后端实测：Ollama 0.23.2 vs llama.cpp b11796 / 0a1ef309c
+Qwen2.5 1.5B Q4_K_M，下载副本SHA256已校验与Ollama模型标识一致。
+两边CPU4线程、上下文2048、相同原始ChatML、temperature=0、repeat_penalty=1、
+最多64输出token；llama -tb4 -np1 -ngl0 -fa off；其余后端默认配置。
+每组2个输入*3轮*2后端，共12次；反转后端顺序。冷模型加载不计入，
+无缓存组每次先用不同短提示词预热，llama cache_prompt=false；
+有缓存组每次先用相同系统提示词+你好预热，llama cache_prompt=true。
+无提示词缓存:
+输入0: ollama: TTFT median=9.901s decode~10.14tokens/s input_eval_counts=[201, 201, 201]
+输入0: llama.cpp: TTFT median=3.870s decode~10.42tokens/s input_eval_counts=[201, 201, 201]
+输入1: ollama: TTFT median=9.665s decode~9.94tokens/s input_eval_counts=[197, 197, 197]
+输入1: llama.cpp: TTFT median=3.790s decode~10.32tokens/s input_eval_counts=[197, 197, 197]
+系统提示词缓存:
+输入0: ollama: TTFT median=1.466s decode~10.81tokens/s input_eval_counts=[201, 201, 201]
+输入0: llama.cpp: TTFT median=0.497s decode~10.29tokens/s input_eval_counts=[24, 24, 24]
+输入1: ollama: TTFT median=1.249s decode~10.36tokens/s input_eval_counts=[197, 197, 197]
+输入1: llama.cpp: TTFT median=0.421s decode~10.19tokens/s input_eval_counts=[20, 20, 20]
+缓存组首字延迟约1.47→0.50秒、1.25→0.42秒；有进一步集成价值。
+无缓存组约9.9→3.9秒的收益不能当作已经预热的日常对话收益。
+两后端回复不同，同一后端缓存模式不同也可能产生不同文字；
+不能根据总完成时间推导固定回复的加速比，不能宣称模型回答质量不变。
+decode tokens/s 各后端计数惯例有细微差异，作为辅助指标；主要指标为实测TTFT。
+测试只覆盖两个短提示词，无多轮上下文/并发TTS/打断/控制标签完整集成验证。
+llama进程观测RSS约2029MiB，测试时MemAvailable约3.4GiB，vmstat实时si/so为0。
+临时服务测试后停止，正式Ollama配置未替换；运行包位于/tmp，模型副本在cache/backend-benchmark。
+复现服务：/tmp/agent-backends/llama/llama-b11796/llama-server -m cache/backend-benchmark/qwen2.5-1.5b-q4_k_m.bin -t 4 -tb 4 -c 2048 -np 1 -ngl 0 -fa off --host 127.0.0.1 --port 18080
+复现测试：venv/bin/python -B experiments/benchmark_llm_backends.py [--prefix-cache]
+官方后端来源：https://github.com/ggml-org/llama.cpp/releases/tag/b11796
+下一步建议：优先验证llama.cpp与现有ChatEngine/TTS联动；SenseVoice先复核分歧转写，
+再使用独立完整短句录音评估CER，不因本轮快而直接替换。
+
+llama.cpp 正式集成（2026-10-21）
+llm_backend.py统一对话、摘要、预热；config默认llama.cpp，Ollama可显式回退。
+运行包已持久化到runtime/llama-b11796，模型仍为已校验的现有Qwen副本。
+上下文4096、CPU4线程、单槽、OpenAI聊天接口、开启前缀缓存。
+原始后端对照用2048上下文/raw ChatML，与正式chat接口结果不应直接等同。
+首段提前分段32个回归检查通过；适配器非流式/流式/参数/Ollama回退检查通过。
+真实服务启动、预热、流式首字0.423秒、取消后再次调用、拥有的子进程退出清理通过。
+完整GUI链路用已有3秒录音（无现场录音，无测试记忆写入）：
+STT 5.01秒，LLM首字1.07秒，首段合成2.21秒；文件提交至首播放9.12秒。
+两段均实际播放完成，正常退出；没有VAD等待，没有硬件声学延迟测量，无基线同轮对照。
+已恢复正常启动入口；程序启动自动拉起本机服务，手动回退设置llm_backend=ollama。
+测试日志：llama_pipeline_smoke.log；服务日志cache/llama-server.log。
+
+DeepSeek Flash API 接入与测试（2026-10-21）
+适配器支持.env配置与流式/非流式接口，思考模式disabled；正式配置仍为llama.cpp。
+只发送合成测试对话，无已保存私人记忆；密钥未记入日志/结果。
+emotion: TTFT=6.806s total=7.028s reply=辛苦了，先让这份疲惫在这里歇一歇。项目的事我帮你记下了，明天再想。
+context: TTFT=11.815s total=12.131s reply=你担心的可能是被追问细节时答不上来，或者数字对不上。现在不用急着想答案，先说说此刻身体哪里感觉最紧。
+audio: TTFT=14.564s total=14.782s reply=好的，白噪音轻轻放着，陪你慢慢放松。今天有没有哪里让你觉得有点累？
+[AUDIO:white]
+neutral_prompt_context: TTFT=2.377s total=2.479s reply=你担心被问到预算，但没说具体怕哪一点。
+非流式摘要接口调用通过；离线适配器检查与32项分段检查通过。
+原睡前提示下上下文回答未明确提到预算，白噪音回复还追加提问；
+中性提示对照正确提到预算。每例仅一次，网络/服务/缓存均可能影响耗时，
+不能据此断言中性提示必然更快；不直接切换正式服务。
+尚未对DeepSeek运行真实完整语音链路，待先确定回复内容和延迟可接受。
+
+DeepSeek Clash直连规则设置后复测（2026-10-21）
+用户添加DOMAIN,api.deepseek.com,DIRECT前置规则；客户端沿用现有代理入口。
+同三条输入各跑两次；先前每条一次。未读取Clash实际连接日志，不能独立证明命中DIRECT。
+emotion: before=6.806s after=[0.9862259190012992, 0.6838147420003224] median=0.835s
+context: before=11.815s after=[0.7181526730000769, 0.8595484800007398] median=0.789s
+audio: before=14.564s after=[0.8749183879990596, 0.7321126650003862] median=0.804s
+Overall median=0.796s. 非随机同期AB，服务负载/缓存也可能影响结果。上下文预算测试仍未明确回答预算，需单独改进提示词。
+
+人工参考更新：用户确认13秒SenseVoice全文正确，包括嗯，但允许省略该语气词。
+Q8/FP16严格CER变为8/93=8.60%；忽略已确认的嗯为7/92=7.61%。
+13秒SenseVoice严格/宽容CER均0；Q8严格3/36=8.33%，宽容2/35=5.71%。
+旧汇总是更新前参考的历史结果；当前参考及评分以q8_clips/references.json和cer.json为准。
+
+完整25.65秒录音复测，SenseVoice加载2.855秒，未有人审核全段参考。
+Whisper Q8: median=8.111s; transcript=我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。
+SenseVoice: median=2.947s; transcript=我是说今天我吃了饭，我吃了那个一份米线，一份蛋羹，一份西红柿炒鸡蛋，一份嗯西兰花。最后呢，我觉得这个点的太多了，然后吃的太饱了，然后我就回寝室了，没有吃完，然后呢浪费了一些食物。
+Q8含进程和模型加载，SenseVoice不含加载；当前机器状态与早期基准不同，勿将不同批次耗时视为模型回退。
+
+正式切换：SenseVoice → DeepSeek Flash → 本地sherpa TTS（2026-10-21）
+保持所有原prompt配置不变；SenseVoice模型持久化到sherpa-models/sensevoice-int8。
+启动加载一次，后续复用识别器；asr_backend=whisper可独立回退Q8；
+llm_backend=llama.cpp可独立回退本地文本模型；正式配置为sensevoice/deepseek。
+固定3秒录音真实GUI全链路通过：ASR 0.21秒，首段TTS 0.98秒，文件提交至首播放2.07秒。
+两段语音均完成播放。此计时不含VAD尾静音和硬件声学延迟，且是单次测试。
+旧链路曾测9.12秒，但回复/会话上下文不同，不作为严格同输出AB加速比。
+适配器和32项首段分段检查通过；自动完整链路脚本smoke_voice_pipeline.py保留。
+测试未读取历史摘要、未保存测试记忆；正常运行仍按既有逻辑处理历史摘要。
+
+2026-10-21 Mem0 first integration (single existing venv)
+-----------------------------------------------------
+User requested avoiding a separate environment. Installed Mem0 2.2.1,
+FastEmbed 0.9.0, OpenAI SDK 2.54.0 and protobuf 6.33.6 in existing venv.
+ONNX Runtime 1.26.0 declares protobuf without a minimum blocking 6.33.6.
+pip check passed. Actual SenseVoice 3s clip transcribed successfully;
+Sherpa TTS generated 10722 samples at 8kHz for 晚上好 (no playback).
+Removed the unused runtime/memory-venv (~147MiB) and replaced the proposed
+subprocess client with one in-process background thread. No global proxy changes.
+
+Configuration: BGE-small-zh-v1.5 ONNX, 512 dimensions, 2 threads, model cache
+~91MiB. Local Qdrant stores vectors/text; SQLite history.db records operations
+and recent extraction messages. Cloud extraction uses existing DeepSeek Flash,
+thinking disabled. No graph or spaCy model installed. English BM25 encoder
+disabled through a small Qdrant adapter, avoiding extra lazy downloads.
+Normal embedding initialization is local_files_only; setup_memory.py downloads.
+
+Reproducible test: venv/bin/python experiments/check_memory.py --live
+Latest raw output: experiments/memory_results.json (synthetic information only).
+Latest run: 12/12 functional checks passed, including actual ChatEngine sessions.
+- Name/preference extraction, semantic recall, moved city retrieval.
+- Current-city answer with old/new records present: 上海.
+- Explicit ID update and SQLite history, restart persistence.
+- Delete removes that ID's history; full clear removes all history/messages;
+  empty search after restarting.
+- Separate ChatEngine session answered: 你之前说过，睡前最喜欢听雨声。
+- Voice-engine clear command emptied the long-term store.
+Timings on tiny corpus: initialization 2.62s; two extraction calls 1.49s / 0.91s.
+Ten warm semantic queries: median 9.54ms, maximum 11.01ms.
+Peak process RSS 368.8MiB for this test, NOT incremental app memory and NOT
+whole voice-app RAM under concurrent ASR/TTS. No large-corpus or full audio
+end-to-end latency claim. Live API calls vary across runs.
+
+Offline checks: 5/5 memory regression cases (including in-flight summary vs
+forget and busy-store search). 32/32 streaming segmentation cases passed;
+existing LLM adapter contract checks passed. Existing test_agent.py has 7/8
+passing: test_extract_audio_tag still expects [AUDIO:rain], while unchanged
+config.py recognizes white/music only. This mismatch predates memory work;
+production tag behavior was not changed to satisfy the stale test.
+
+Limits / rejected approaches:
+- Independent venv/process approach removed at user's request; no unused worker
+  code retained. Version constraints are in requirements.txt.
+- Mem0 2.2.1 automated add is additive: old Beijing and new Shanghai facts can
+  both remain retrievable. Timestamped context produced the correct answer in
+  this example, but this is NOT a strict current-fact/version-state guarantee.
+  Explicit update-by-ID does change a record and retain its history.
+- The first diagnostic run lazily downloaded a small BM25 tokenizer; that path
+  was disabled afterward. Initial 6.67s add included this initialization and
+  is not directly comparable with warm extraction timings.
+- Background writes happen after speech; while busy, retrieval waits at most
+  150ms for the lock, then skips memory for that turn. The actual local search
+  has no hard deadline. Failed writes are logged, not claimed durable.
+- Full clear is ordered after accepted writes and invalidates pending summaries.
+  Single-ID deletion does not trace equivalent facts in other records/summaries.
+  Logs, backups and remote provider retention are outside this local clear.
+- Model dependencies shared with ASR/TTS; actual ASR/TTS verified after protobuf
+  change. Current GUI process was not restarted; config takes effect next launch.
+
+2026-10-22: 25.65-second recorded-audio Mem0 acceptance check
+Command: venv/bin/python -B experiments/check_memory_audio.py --live
+Evidence: experiments/memory_audio_results.json
+Production SenseVoice and ChatEngine/DeepSeek/Mem0, disposable isolated store.
+Three independent processes: transcribe/respond/finalize, restart/recall/clear,
+restart/verify empty. All 12 checks passed. No mid-session write; one record
+saved on finalize, with all four foods, overeating/leftovers and dorm destination.
+Fresh-process answer recalled all these facts without prior chat history.
+Clear removed records and daily summary, and remained empty after another restart.
+Timing (single run): ASR model load 4.684s, ASR inference 2.697s,
+initial full text reply 0.847s, finalization+summary+memory flush 1.906s,
+recall full text reply 1.006s. These exclude microphone/VAD/TTS/GUI; they are
+not end-to-end audible latency. No production memory touched; test DB removed.
+The old recording says 'today', so production extraction dated the event to
+this test's 2026-10-22 session; this is not the recording's original event date.
+GPU discovery and optional spaCy warnings did not prevent CPU vector retrieval.

@@ -1,0 +1,97 @@
+{
+  "scope": "File ASR + production ChatEngine + session write + process restart + recall + clear; no GUI/VAD/TTS",
+  "phases": [
+    {
+      "phase": "write",
+      "checks": {
+        "reply_present": true,
+        "no_mid_session_write": true,
+        "session_saved": true
+      },
+      "seconds": {
+        "asr_load": 4.6843887660000405,
+        "asr": 2.6965768229999867,
+        "reply": 0.8466816060000042,
+        "finalize_and_flush": 1.9060566480000034
+      },
+      "duration": 25.65,
+      "audio_sha256": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+      "transcript": "我是说今天我吃了饭，我吃了那个一份米线，一份蛋羹，一份西红柿炒鸡蛋，一份嗯西兰花。最后呢，我觉得这个点的太多了，然后吃的太饱了，然后我就回寝室了，没有吃完，然后呢浪费了一些食物。",
+      "reply": "听起来你今晚吃得挺满足的，只是最后有点撑，还剩下了一些。这种小遗憾可以先放一放，明天再考虑。",
+      "records": [
+        {
+          "id": "cc6afceb-f74a-41c4-b31f-61153ed152b0",
+          "memory": "2026年10月22日，用户吃了一顿饭，包括一份米线、一份蛋羹、一份西红柿炒鸡蛋和一份西兰花；用户觉得点得太多、吃得太饱，没吃完，浪费了一些食物，之后回了寝室。",
+          "hash": "5204a2c09e533de616d9ed59b7a963c8",
+          "metadata": {
+            "session_id": "22a953375e9443898c694c444db68a82",
+            "source": "user_transcript",
+            "observed_at": "2026-10-22T09:49:31.941087+08:00"
+          },
+          "created_at": "2026-10-22T01:49:33.816062+00:00",
+          "updated_at": "2026-10-22T01:49:33.816062+00:00",
+          "user_id": "default",
+          "attributed_to": "user"
+        }
+      ]
+    },
+    {
+      "phase": "recall",
+      "checks": {
+        "fresh_session_empty": true,
+        "persisted_after_process_restart": true,
+        "food_details": true,
+        "destination": true,
+        "reason": true,
+        "clear_records": true,
+        "clear_summary": true
+      },
+      "seconds": {
+        "recall_reply": 1.0058168090000095
+      },
+      "records": [
+        {
+          "id": "cc6afceb-f74a-41c4-b31f-61153ed152b0",
+          "memory": "2026年10月22日，用户吃了一顿饭，包括一份米线、一份蛋羹、一份西红柿炒鸡蛋和一份西兰花；用户觉得点得太多、吃得太饱，没吃完，浪费了一些食物，之后回了寝室。",
+          "hash": "5204a2c09e533de616d9ed59b7a963c8",
+          "metadata": {
+            "session_id": "22a953375e9443898c694c444db68a82",
+            "source": "user_transcript",
+            "observed_at": "2026-10-22T09:49:31.941087+08:00"
+          },
+          "created_at": "2026-10-22T01:49:33.816062+00:00",
+          "updated_at": "2026-10-22T01:49:33.816062+00:00",
+          "user_id": "default",
+          "attributed_to": "user"
+        }
+      ],
+      "question": "我之前那顿饭吃了哪些东西？后来为什么有食物没吃完，吃完回哪里了？",
+      "retrieved": [
+        {
+          "id": "cc6afceb-f74a-41c4-b31f-61153ed152b0",
+          "memory": "2026年10月22日，用户吃了一顿饭，包括一份米线、一份蛋羹、一份西红柿炒鸡蛋和一份西兰花；用户觉得点得太多、吃得太饱，没吃完，浪费了一些食物，之后回了寝室。",
+          "hash": "5204a2c09e533de616d9ed59b7a963c8",
+          "metadata": {
+            "session_id": "22a953375e9443898c694c444db68a82",
+            "source": "user_transcript",
+            "observed_at": "2026-10-22T09:49:31.941087+08:00"
+          },
+          "score": 0.6416731675305374,
+          "created_at": "2026-10-22T01:49:33.816062+00:00",
+          "updated_at": "2026-10-22T01:49:33.816062+00:00",
+          "user_id": "default",
+          "attributed_to": "user"
+        }
+      ],
+      "answer": "你那天吃了米线、蛋羹、西红柿炒鸡蛋和西兰花；点得有点多，吃太饱就没吃完，后来回了寝室。"
+    },
+    {
+      "phase": "verify",
+      "checks": {
+        "clear_survives_process_restart": true,
+        "search_empty": true
+      },
+      "seconds": {}
+    }
+  ]
+}

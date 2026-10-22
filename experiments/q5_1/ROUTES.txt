@@ -1,0 +1,98 @@
+ARCHIVED EXPERIMENT — implementation source removed on user request (2026-10-21).
+Results below describe historical runs. Reproduction commands below are historical
+and no longer executable from this cleaned project. No experimental backend deployed.
+Current deployment: standard Q8_0. See ../PERFORMANCE.txt for current status.
+
+Four-route experiment — 2026-10-21
+
+Purpose
+  Compare reuse of unpacked weights, encoder-weight pre-expansion, mixed
+  FP16-encoder/Q5_1-decoder weights, and Q8_0 against existing FP16 and Q5_1.
+  Experimental shared libraries/models are isolated in /tmp. No production
+  Whisper files or application configuration are replaced.
+
+Implementations
+  reuse: process four activation columns with the same unpacked Q5_1 blocks.
+    Uses the original scalar lookup expansion. Two-dimensional contiguous
+    Q5 matrix products only; other shapes follow the existing implementation.
+    Final 1–3 columns are handled individually, with unchanged arithmetic.
+  prepack: at model load, expand encoder Q5 integers to signed 8-bit lanes
+    (values 0..31), retaining their original FP16 scale and offset. Original
+    weights are retained for fallback. One output per kernel call, so the
+    comparison isolates pre-expansion rather than combining it with reuse.
+    A mutex-protected map owns per-tensor expanded storage; freed with model.
+    Additional expanded encoder storage: 95,551,488 bytes (91.125 MiB).
+  hybrid: copy encoder tensors byte-for-byte from original FP16 model and
+    decoder tensors byte-for-byte from existing Q5_1 model. A custom loader
+    creates encoder matrices as FP16. The hybrid file MUST use this loader;
+    it is not a standard drop-in model for the production executable.
+  q8: use the project's existing whisper-quantize tool on the original FP16
+    model. Standard loader; runtime log confirms CPU_REPACK weight buffers.
+
+Validation
+  176,000 bit-identical random kernel output comparisons, including odd block
+  counts, scale/offset variation and the 768/3072 dimensions of Whisper-small.
+  384 GGML matrix cases each for reuse and prepack: 1/4 threads, dimensions
+  32/64/768/3072, row and column remainders, 1/2 batches. Serialized output
+  compared byte-for-byte against the original backend with cmp.
+  All 479 hybrid tensor records checked against the selected source model.
+  Recognition: 13-second prefix and full 25.65-second input_test_data.wav,
+  each variant run three times with alternating execution order. Four CPU
+  threads, Chinese, beam=1, best-of=1, same prompt. Robot stopped; builds
+  finished before the measured runs. Timings include subprocess startup/load.
+  Peak RSS is the individual recognition process, not the entire robot.
+  Exact transcript agreement is NOT an accuracy score: no manual reference
+  transcript, and both clips come from one source recording.
+
+Reproduction (project root; existing CMake build and original model files needed)
+  g++ -O3 -std=c++17 -mcpu=cortex-a76 -fopenmp experiments/q5_1/reuse_prepack.cpp -ldl -o /tmp/q5-reuse-prepack
+  /tmp/q5-reuse-prepack "$PWD/whisper.cpp/build/ggml/src/libggml-cpu.so.0"
+  python3 experiments/q5_1/build_routes.py reuse /tmp/q5-reuse
+  python3 experiments/q5_1/build_routes.py prepack /tmp/q5-prepack
+  python3 experiments/q5_1/make_hybrid.py whisper.cpp/models/ggml-small.bin whisper.cpp/models/ggml-small-q5_1.bin /tmp/ggml-small-hybrid.bin
+  python3 experiments/q5_1/build_routes.py hybrid /tmp/q5-hybrid
+  whisper.cpp/build/bin/whisper-quantize whisper.cpp/models/ggml-small.bin /tmp/ggml-small-q8_0.bin q8_0
+  python3 experiments/q5_1/benchmark_routes.py
+  python3 experiments/q5_1/summarize_routes.py
+  make_hybrid.py intentionally refuses to overwrite an existing model output.
+  benchmark_routes.py replaces its previous logs/results under /tmp/q5-route-results.
+
+Matrix validation build
+  g++ -O2 -I whisper.cpp/ggml/include experiments/q5_1/check_matrix.cpp -L whisper.cpp/build/ggml/src -Wl,-rpath,"$PWD/whisper.cpp/build/ggml/src" -lggml -lggml-cpu -lggml-base -ldl -o /tmp/check-q5-matrix
+  /tmp/check-q5-matrix /tmp/q5-matrix-original.bin
+  LD_LIBRARY_PATH=/tmp/q5-reuse /tmp/check-q5-matrix /tmp/q5-matrix-reuse.bin
+  LD_LIBRARY_PATH=/tmp/q5-prepack /tmp/check-q5-matrix /tmp/q5-matrix-prepack.bin
+  cmp /tmp/q5-matrix-original.bin /tmp/q5-matrix-reuse.bin
+  cmp /tmp/q5-matrix-original.bin /tmp/q5-matrix-prepack.bin
+
+Limitations
+  Research prototypes for this CPU/build, not a portable or upstream-ready
+  backend. No GPU/repack integration for custom Q5 kernels. The prepack cache
+  increases peak memory and load time and retains original weights. Kernel
+  microbenchmarks cannot predict whole-app response time; recognition tests
+  do not include VAD, LLM or TTS. Broader speech evaluation is needed before
+  selecting a new default model.
+
+Measured results (medians of three runs)
+short
+fp16    total=8.573s encode=6.038s load=0.393s rss=635.9MiB
+q5      total=10.362s encode=8.828s load=0.181s rss=348.7MiB
+reuse   total=8.757s encode=7.223s load=0.181s rss=348.1MiB
+prepack total=9.072s encode=7.170s load=0.427s rss=441.5MiB
+hybrid  total=7.952s encode=6.389s load=0.263s rss=453.3MiB
+q8      total=5.750s encode=3.735s load=0.493s rss=421.0MiB
+long
+fp16    total=10.665s encode=5.995s load=0.392s rss=637.1MiB
+q5      total=11.809s encode=8.862s load=0.184s rss=349.8MiB
+reuse   total=10.168s encode=7.271s load=0.184s rss=348.8MiB
+prepack total=10.237s encode=7.172s load=0.423s rss=443.1MiB
+hybrid  total=9.408s encode=6.397s load=0.257s rss=454.5MiB
+q8      total=7.243s encode=3.751s load=0.498s rss=421.6MiB
+Exact transcript agreement reuse vs q5: 6/6
+Exact transcript agreement prepack vs q5: 6/6
+Exact transcript agreement hybrid vs fp16: 3/6
+Exact transcript agreement q8 vs fp16: 6/6
+
+Conclusion: Q8_0 is the fastest candidate on these clips. Keep production
+configuration unchanged pending broader speech evaluation. Raw logs/results:
+/tmp/q5-route-results/results.json

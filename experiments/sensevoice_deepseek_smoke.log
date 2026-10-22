@@ -1,0 +1,44 @@
+/home/pi/projects/be-more-agent/venv/lib/python3.13/site-packages/webrtcvad.py:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+[INIT] Sherpa num_threads (from config) = 4
+[INIT] Sherpa TTS loaded.
+[STAGE] 开机音效：sounds/start/connection-sound-for-software.wav
+[TIMER] >>> ASR SenseVoice load[STATE] WARMUP: Warming up brains...
+
+[TIMER] <<< ASR SenseVoice load  2.28s
+[TIMER] >>> LLM warmup (prefix)
+[TIMER] <<< LLM warmup (prefix)  0.84s
+[STAGE] 问候阶段（无摘要）
+[STATE] GREETING: 晚上好
+[TIMER] >>> TTS sherpa synth [晚上好。...]
+[SHERPA TTS] '晚上好。'
+[TIMER] <<< TTS sherpa synth [晚上好。...]  0.72s
+[TIMER] >>> TTS play [48000Hz 60072smp]
+[TIMER] <<< TTS play [48000Hz 60072smp]  1.36s
+Models loaded.
+Transcribing...
+[TIMER] >>> STT SenseVoice
+[STATE] LISTENING: 我在听…
+[TIMER] <<< STT SenseVoice  0.21s
+Heard: '我是说今天我吃了饭。'
+[TIMER] >>> 完整一轮对话
+[STAGE] 第 1 轮对话：我是说今天我吃了饭。
+[STATE] THINKING: Thinking...
+[TIMER] LLM 首Token延迟 0.72s
+[STATE] SPEAKING: Speaking...
+[TIMER] >>> TTS sherpa synth [嗯，吃过了就好。...]
+[SHERPA TTS] '嗯，吃过了就好。'
+[TIMER] <<< TTS sherpa synth [嗯，吃过了就好。...]  0.98s
+[TIMER] >>> TTS sherpa synth [现在躺下来，感觉身体沉不沉？...]
+[SHERPA TTS] '现在躺下来，感觉身体沉不沉？'
+[TIMER] >>> TTS play [48000Hz 93666smp]
+[TIMER] 首次提交语音播放：距末帧人声 2.07s，距录音结束 2.07s（软件计时，未计硬件输出延迟）
+[TIMER] <<< TTS sherpa synth [现在躺下来，感觉身体沉不沉？...]  2.00s
+[TIMER] <<< TTS play [48000Hz 93666smp]  2.07s
+[TIMER] >>> TTS play [48000Hz 188160smp]
+[TIMER] <<< TTS play [48000Hz 188160smp]  4.06s
+SMOKE PIPELINE COMPLETED
+[STATE] IDLE: Ready
+[TIMER] <<< 完整一轮对话  8.01s
+
+--- SHUTDOWN SEQUENCE ---

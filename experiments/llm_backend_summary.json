@@ -1,0 +1,38 @@
+{
+  "无提示词缓存": {
+    "0-ollama": {
+      "ttft": 9.901432199998453,
+      "decode_tokens_per_second": 10.143932910269916
+    },
+    "0-llama.cpp": {
+      "ttft": 3.869699959999707,
+      "decode_tokens_per_second": 10.417046454818665
+    },
+    "1-ollama": {
+      "ttft": 9.665230866999991,
+      "decode_tokens_per_second": 9.944301315467069
+    },
+    "1-llama.cpp": {
+      "ttft": 3.789679661000264,
+      "decode_tokens_per_second": 10.320023942455547
+    }
+  },
+  "系统提示词缓存": {
+    "0-ollama": {
+      "ttft": 1.4659129850006138,
+      "decode_tokens_per_second": 10.811692720261327
+    },
+    "0-llama.cpp": {
+      "ttft": 0.49676609500056657,
+      "decode_tokens_per_second": 10.291372134613018
+    },
+    "1-ollama": {
+      "ttft": 1.2485197400001198,
+      "decode_tokens_per_second": 10.360725925973775
+    },
+    "1-llama.cpp": {
+      "ttft": 0.42098587100008444,
+      "decode_tokens_per_second": 10.188857355446274
+    }
+  }
+}

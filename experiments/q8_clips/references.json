@@ -1,0 +1,50 @@
+{
+  "reviewed_by": "user",
+  "review_date": "2026-10-21",
+  "corrections": {
+    "凄烈的": "",
+    "庆市": "寝室",
+    "西湖式": "西红柿"
+  },
+  "notes": "User wrote 凄列的; mapped to actual ASR 凄烈的. User confirmed all unmentioned text correct. User subsequently confirmed SenseVoice 13s transcript including 嗯; omission of this filler is acceptable in practical scoring.",
+  "clips": [
+    {
+      "clip": "3s",
+      "start": 0,
+      "end": 3,
+      "sha256_audio": "466e4018a80a47d5f42af84337c54171883a29dd3344372b6e51c45e46a82843",
+      "reference": "我是说今天我吃了饭"
+    },
+    {
+      "clip": "5s",
+      "start": 3,
+      "end": 8,
+      "sha256_audio": "ea8f28c2f9ace3052347b387f1c07a460ae872bb3fb03a78f95c630ad8b8e93e",
+      "reference": "我说一份米线一份蛋糕。"
+    },
+    {
+      "clip": "7s",
+      "start": 8,
+      "end": 15,
+      "sha256_audio": "478eb408789b49ff24444cec07eae3a9724f98e9a87ffcde470718847ceef176",
+      "reference": "一份西兰花。最后呢,我觉得。"
+    },
+    {
+      "clip": "10s",
+      "start": 13,
+      "end": 23,
+      "sha256_audio": "89286c3cbfb644b405efbeb7f9c6c919f232a99acbf293ffa5afc05ff85c69dd",
+      "reference": "最后我觉得点了太多了,吃得太饱了,然后我就回寝室了,没有吃完,"
+    },
+    {
+      "clip": "13s",
+      "start": 0,
+      "end": 13,
+      "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+      "reference": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红柿炒鸡蛋,一份嗯西兰花。",
+      "optional_fillers": [
+        "嗯"
+      ]
+    }
+  ]
+}

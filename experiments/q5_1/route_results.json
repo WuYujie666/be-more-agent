@@ -1,0 +1,614 @@
+[
+  {
+    "trial": 0,
+    "sample": "short",
+    "variant": "fp16",
+    "seconds": 8.59433771699969,
+    "timings": {
+      "load": 0.39847000000000005,
+      "encode": 6.0383000000000004,
+      "decode": 1.8812200000000001,
+      "batchd": 0.11918000000000001
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "max_rss_kib": 651184,
+    "model_bytes": 487601967,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 0,
+    "sample": "short",
+    "variant": "q5",
+    "seconds": 10.462527349000084,
+    "timings": {
+      "load": 0.18102000000000001,
+      "encode": 8.82832,
+      "decode": 1.15642,
+      "batchd": 0.14994
+    },
+    "text": "我是说,今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红花,一份炒鸡蛋。",
+    "max_rss_kib": 357024,
+    "model_bytes": 190085487,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 0,
+    "sample": "short",
+    "variant": "reuse",
+    "seconds": 8.75651014199957,
+    "timings": {
+      "load": 0.17998,
+      "encode": 7.21905,
+      "decode": 1.0867200000000001,
+      "batchd": 0.13401
+    },
+    "text": "我是说,今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红花,一份炒鸡蛋。",
+    "max_rss_kib": 357040,
+    "model_bytes": 190085487,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 0,
+    "sample": "short",
+    "variant": "prepack",
+    "seconds": 9.071508202000587,
+    "timings": {
+      "load": 0.42295,
+      "encode": 7.2575,
+      "decode": 1.0749600000000001,
+      "batchd": 0.15136000000000002
+    },
+    "text": "我是说,今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红花,一份炒鸡蛋。",
+    "max_rss_kib": 452032,
+    "model_bytes": 190085487,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 95551488
+  },
+  {
+    "trial": 0,
+    "sample": "short",
+    "variant": "hybrid",
+    "seconds": 7.919780606000131,
+    "timings": {
+      "load": 0.26279,
+      "encode": 6.3886199999999995,
+      "decode": 0.97199,
+      "batchd": 0.14639
+    },
+    "text": "我是说,今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红花,一份炒鸡蛋。",
+    "max_rss_kib": 464176,
+    "model_bytes": 296253807,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 0,
+    "sample": "short",
+    "variant": "q8",
+    "seconds": 5.808111631999964,
+    "timings": {
+      "load": 0.49311,
+      "encode": 3.84964,
+      "decode": 1.2196600000000002,
+      "batchd": 0.09689
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "max_rss_kib": 431056,
+    "model_bytes": 264464607,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 0,
+    "sample": "long",
+    "variant": "fp16",
+    "seconds": 10.652009406999241,
+    "timings": {
+      "load": 0.38816,
+      "encode": 5.99528,
+      "decode": 3.94178,
+      "batchd": 0.11964
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 652368,
+    "model_bytes": 487601967,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 0,
+    "sample": "long",
+    "variant": "q5",
+    "seconds": 11.809171390000301,
+    "timings": {
+      "load": 0.18686000000000003,
+      "encode": 8.85249,
+      "decode": 2.4152600000000004,
+      "batchd": 0.1514
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 358240,
+    "model_bytes": 190085487,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 0,
+    "sample": "long",
+    "variant": "reuse",
+    "seconds": 10.167981873999452,
+    "timings": {
+      "load": 0.18362,
+      "encode": 7.27101,
+      "decode": 2.38191,
+      "batchd": 0.13391999999999998
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 357168,
+    "model_bytes": 190085487,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 0,
+    "sample": "long",
+    "variant": "prepack",
+    "seconds": 10.23682545400061,
+    "timings": {
+      "load": 0.42275,
+      "encode": 7.19524,
+      "decode": 2.25883,
+      "batchd": 0.14739
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 453696,
+    "model_bytes": 190085487,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 95551488
+  },
+  {
+    "trial": 0,
+    "sample": "long",
+    "variant": "hybrid",
+    "seconds": 9.49605770800008,
+    "timings": {
+      "load": 0.25739,
+      "encode": 6.56555,
+      "decode": 2.32707,
+      "batchd": 0.15039
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 465888,
+    "model_bytes": 296253807,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 0,
+    "sample": "long",
+    "variant": "q8",
+    "seconds": 7.247177932000341,
+    "timings": {
+      "load": 0.49809,
+      "encode": 3.7506999999999997,
+      "decode": 2.68651,
+      "batchd": 0.10108
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 431744,
+    "model_bytes": 264464607,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 1,
+    "sample": "short",
+    "variant": "q8",
+    "seconds": 5.681448776000252,
+    "timings": {
+      "load": 0.49295999999999995,
+      "encode": 3.6768400000000003,
+      "decode": 1.26162,
+      "batchd": 0.09881999999999999
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "max_rss_kib": 431104,
+    "model_bytes": 264464607,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 1,
+    "sample": "short",
+    "variant": "hybrid",
+    "seconds": 7.952012151999952,
+    "timings": {
+      "load": 0.25501,
+      "encode": 6.35771,
+      "decode": 1.05084,
+      "batchd": 0.1502
+    },
+    "text": "我是说,今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红花,一份炒鸡蛋。",
+    "max_rss_kib": 463648,
+    "model_bytes": 296253807,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 1,
+    "sample": "short",
+    "variant": "prepack",
+    "seconds": 9.14423977000024,
+    "timings": {
+      "load": 0.42743000000000003,
+      "encode": 7.16988,
+      "decode": 1.2466300000000001,
+      "batchd": 0.14923
+    },
+    "text": "我是说,今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红花,一份炒鸡蛋。",
+    "max_rss_kib": 452048,
+    "model_bytes": 190085487,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 95551488
+  },
+  {
+    "trial": 1,
+    "sample": "short",
+    "variant": "reuse",
+    "seconds": 8.730937928000458,
+    "timings": {
+      "load": 0.18196,
+      "encode": 7.22301,
+      "decode": 1.0517699999999999,
+      "batchd": 0.13356
+    },
+    "text": "我是说,今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红花,一份炒鸡蛋。",
+    "max_rss_kib": 356496,
+    "model_bytes": 190085487,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 1,
+    "sample": "short",
+    "variant": "q5",
+    "seconds": 10.289234789999682,
+    "timings": {
+      "load": 0.17949,
+      "encode": 8.76744,
+      "decode": 1.05616,
+      "batchd": 0.15065
+    },
+    "text": "我是说,今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红花,一份炒鸡蛋。",
+    "max_rss_kib": 357040,
+    "model_bytes": 190085487,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 1,
+    "sample": "short",
+    "variant": "fp16",
+    "seconds": 8.572726898999463,
+    "timings": {
+      "load": 0.3906,
+      "encode": 6.03875,
+      "decode": 1.87134,
+      "batchd": 0.12082999999999999
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "max_rss_kib": 651168,
+    "model_bytes": 487601967,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 1,
+    "sample": "long",
+    "variant": "q8",
+    "seconds": 7.24309455599996,
+    "timings": {
+      "load": 0.49803,
+      "encode": 3.76414,
+      "decode": 2.68268,
+      "batchd": 0.09974
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 432288,
+    "model_bytes": 264464607,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 1,
+    "sample": "long",
+    "variant": "hybrid",
+    "seconds": 9.172075149000193,
+    "timings": {
+      "load": 0.25715,
+      "encode": 6.31689,
+      "decode": 2.2586399999999998,
+      "batchd": 0.1482
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 465392,
+    "model_bytes": 296253807,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 1,
+    "sample": "long",
+    "variant": "prepack",
+    "seconds": 10.234965041000578,
+    "timings": {
+      "load": 0.42269999999999996,
+      "encode": 7.03654,
+      "decode": 2.41729,
+      "batchd": 0.14936000000000002
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 453200,
+    "model_bytes": 190085487,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 95551488
+  },
+  {
+    "trial": 1,
+    "sample": "long",
+    "variant": "reuse",
+    "seconds": 10.246317481000006,
+    "timings": {
+      "load": 0.18631,
+      "encode": 7.34007,
+      "decode": 2.36665,
+      "batchd": 0.13306
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 356688,
+    "model_bytes": 190085487,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 1,
+    "sample": "long",
+    "variant": "q5",
+    "seconds": 11.748211078999702,
+    "timings": {
+      "load": 0.18074,
+      "encode": 8.861780000000001,
+      "decode": 2.35581,
+      "batchd": 0.15115
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 358288,
+    "model_bytes": 190085487,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 1,
+    "sample": "long",
+    "variant": "fp16",
+    "seconds": 10.757676311000068,
+    "timings": {
+      "load": 0.39227,
+      "encode": 6.03517,
+      "decode": 4.00106,
+      "batchd": 0.12242
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 652928,
+    "model_bytes": 487601967,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 2,
+    "sample": "short",
+    "variant": "prepack",
+    "seconds": 8.912582052999824,
+    "timings": {
+      "load": 0.42677,
+      "encode": 7.11451,
+      "decode": 1.07003,
+      "batchd": 0.15045
+    },
+    "text": "我是说,今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红花,一份炒鸡蛋。",
+    "max_rss_kib": 452576,
+    "model_bytes": 190085487,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 95551488
+  },
+  {
+    "trial": 2,
+    "sample": "short",
+    "variant": "hybrid",
+    "seconds": 8.053933123999741,
+    "timings": {
+      "load": 0.266,
+      "encode": 6.4364300000000005,
+      "decode": 1.0478900000000002,
+      "batchd": 0.1524
+    },
+    "text": "我是说,今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红花,一份炒鸡蛋。",
+    "max_rss_kib": 464704,
+    "model_bytes": 296253807,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 2,
+    "sample": "short",
+    "variant": "q8",
+    "seconds": 5.750343444999999,
+    "timings": {
+      "load": 0.49482,
+      "encode": 3.73498,
+      "decode": 1.2766300000000002,
+      "batchd": 0.09886
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "max_rss_kib": 430592,
+    "model_bytes": 264464607,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 2,
+    "sample": "short",
+    "variant": "fp16",
+    "seconds": 8.514125061000414,
+    "timings": {
+      "load": 0.39338,
+      "encode": 5.95971,
+      "decode": 1.88235,
+      "batchd": 0.12042
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "max_rss_kib": 651168,
+    "model_bytes": 487601967,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 2,
+    "sample": "short",
+    "variant": "q5",
+    "seconds": 10.36226847800026,
+    "timings": {
+      "load": 0.18733000000000002,
+      "encode": 8.82874,
+      "decode": 1.04997,
+      "batchd": 0.15162
+    },
+    "text": "我是说,今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红花,一份炒鸡蛋。",
+    "max_rss_kib": 356528,
+    "model_bytes": 190085487,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 2,
+    "sample": "short",
+    "variant": "reuse",
+    "seconds": 8.758652879000692,
+    "timings": {
+      "load": 0.18112999999999999,
+      "encode": 7.25504,
+      "decode": 1.04236,
+      "batchd": 0.13306
+    },
+    "text": "我是说,今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西红花,一份炒鸡蛋。",
+    "max_rss_kib": 355968,
+    "model_bytes": 190085487,
+    "sha256_audio": "ef6bf1a58b2b5d128523fd2b71392414a527652f01390db2ab73809e2cf60e43",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 2,
+    "sample": "long",
+    "variant": "prepack",
+    "seconds": 10.259556307000821,
+    "timings": {
+      "load": 0.43007999999999996,
+      "encode": 7.17184,
+      "decode": 2.2927,
+      "batchd": 0.14707
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 453744,
+    "model_bytes": 190085487,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 95551488
+  },
+  {
+    "trial": 2,
+    "sample": "long",
+    "variant": "hybrid",
+    "seconds": 9.40805255000032,
+    "timings": {
+      "load": 0.26177,
+      "encode": 6.39705,
+      "decode": 2.39923,
+      "batchd": 0.15142
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 465408,
+    "model_bytes": 296253807,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 2,
+    "sample": "long",
+    "variant": "q8",
+    "seconds": 7.202614645000722,
+    "timings": {
+      "load": 0.49851999999999996,
+      "encode": 3.71461,
+      "decode": 2.6893200000000004,
+      "batchd": 0.10117
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 431728,
+    "model_bytes": 264464607,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 2,
+    "sample": "long",
+    "variant": "fp16",
+    "seconds": 10.664618059000532,
+    "timings": {
+      "load": 0.39603,
+      "encode": 5.9529,
+      "decode": 3.98558,
+      "batchd": 0.12131
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 652368,
+    "model_bytes": 487601967,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 2,
+    "sample": "long",
+    "variant": "q5",
+    "seconds": 11.821608905000176,
+    "timings": {
+      "load": 0.18355000000000002,
+      "encode": 8.86374,
+      "decode": 2.42062,
+      "batchd": 0.14996
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 357744,
+    "model_bytes": 190085487,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  },
+  {
+    "trial": 2,
+    "sample": "long",
+    "variant": "reuse",
+    "seconds": 10.145430515999578,
+    "timings": {
+      "load": 0.18305000000000002,
+      "encode": 7.2580100000000005,
+      "decode": 2.36783,
+      "batchd": 0.13338999999999998
+    },
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份几乎是炒鸡蛋,一份西兰花。最后呢,我觉得这个点了太多了,然后吃得太饱了,然后我就回庆市了。没有吃完,然后呢,浪费了一些食物。",
+    "max_rss_kib": 357712,
+    "model_bytes": 190085487,
+    "sha256_audio": "df39c4101ac08fdad591ef91db9f7a4917e6abb0585e44af5b13cfabf19ca6cb",
+    "prepack_bytes": 0
+  }
+]

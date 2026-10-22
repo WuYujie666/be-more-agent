@@ -1,0 +1,9 @@
+{
+  "sensevoice_model_sha256": "c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51",
+  "sensevoice_bytes": 239233841,
+  "sherpa_onnx": "1.13.2",
+  "llama_build": "b11796 / 0a1ef309c",
+  "qwen_expected_sha256": "183715c435899236895da3869489cc30ac241476b4971a20285b1a462818a5b4",
+  "ollama_version": "0.23.2",
+  "qwen_sha256_verified": true
+}

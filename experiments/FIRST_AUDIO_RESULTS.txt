@@ -1,0 +1,32 @@
+Historical experiment. Current deployment/validation status: PERFORMANCE.txt.
+
+First-audio experiment (2026-10-21)
+Reproduce: venv/bin/python -B experiments/benchmark_first_audio.py
+Raw results: experiments/first_audio_results.json
+Robot stopped. Real local Ollama and sherpa, no recording or playback.
+Two fixed text prompts, four variants, two rounds in reverse order.
+Each prompt produced identical full reply text across all eight runs.
+Metric: LLM request start to first synthesized audio ready, excluding STT,
+VAD, device latency, and later speech chunks. Only first chunk synthesized.
+
+Median seconds, two runs per cell:
+                         long first sentence   short first sentence (oh?)
+Full sentence LLM4 TTS4       9.918                 2.863
+Early clause  LLM4 TTS4       5.176                 3.125
+Early clause  LLM3 TTS1       7.839                 4.615
+Early clause  LLM2 TTS2       7.249                 3.938
+
+Early clause: split at comma/semicolon/colon after at least eight word
+characters, or ordinary sentence ending. Experimental script only.
+No reliable benefit for already short first sentences. Reduced threads
+were slower on these examples. Prosody, gaps between later chunks, actual
+playback, and conversation history were not evaluated. Only two prompts.
+Next priority: first-clause playback/prosody evaluation with real short
+utterances. Typical STT tests should prioritize complete 2-5 second and
+5-10 second speech; the previous 13/25.65-second clips are not representative
+of typical brief user turns. Do not infer short-turn latency from them.
+
+Deployment: config.json now uses ggml-small-q8_0.bin, standard Q8 model,
+original FP16 retained. Application transcribe_audio path verified on
+13-second fixture: 5.78 seconds, exit zero, expected transcript returned.
+No production sentence segmentation or thread-count changes applied.

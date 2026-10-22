@@ -1,0 +1,15 @@
+2026-10-21: removed abandoned Q5 prototype source/build/benchmark harnesses.
+Kept historical methodology, failures, correctness checks, timings and route_results.json.
+Removed from q5_1/:
+check_kernel.cpp
+benchmark_routes.py
+summarize_routes.py
+reuse_prepack.cpp
+build_routes.py
+check_matrix.cpp
+make_hybrid.py
+build_variant.py
+
+Retained current Q8 A/B benchmark, fixed audio clips and raw logs, reviewed references,
+CER scorer, first-audio benchmark and streaming regression checks.
+Temporary builds under /tmp were not deployed and are outside the project cleanup.

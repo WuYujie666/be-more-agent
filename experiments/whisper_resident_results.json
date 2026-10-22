@@ -1,0 +1,122 @@
+[
+  {
+    "trial": 0,
+    "clip": "3s",
+    "seconds": 4.596477199000219,
+    "text": "我是说今天我吃了饭",
+    "errors": 0,
+    "reference_chars": 9
+  },
+  {
+    "trial": 0,
+    "clip": "5s",
+    "seconds": 4.662787920999108,
+    "text": "我说一份米线一份蛋糕。",
+    "errors": 0,
+    "reference_chars": 10
+  },
+  {
+    "trial": 0,
+    "clip": "7s",
+    "seconds": 4.867533335000189,
+    "text": "一份凄烈的西兰花。\n最后呢,我觉得。",
+    "errors": 3,
+    "reference_chars": 11
+  },
+  {
+    "trial": 0,
+    "clip": "10s",
+    "seconds": 5.143571151998913,
+    "text": "最后我觉得点了太多了,吃得太饱了,\n然后我就回庆市了,没有吃完,",
+    "errors": 2,
+    "reference_chars": 27
+  },
+  {
+    "trial": 0,
+    "clip": "13s",
+    "seconds": 5.599313988999711,
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "errors": 2,
+    "reference_chars": 35
+  },
+  {
+    "trial": 1,
+    "clip": "13s",
+    "seconds": 5.623279272998843,
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "errors": 2,
+    "reference_chars": 35
+  },
+  {
+    "trial": 1,
+    "clip": "10s",
+    "seconds": 5.126612005000425,
+    "text": "最后我觉得点了太多了,吃得太饱了,\n然后我就回庆市了,没有吃完,",
+    "errors": 2,
+    "reference_chars": 27
+  },
+  {
+    "trial": 1,
+    "clip": "7s",
+    "seconds": 5.03546144700158,
+    "text": "一份凄烈的西兰花。\n最后呢,我觉得。",
+    "errors": 3,
+    "reference_chars": 11
+  },
+  {
+    "trial": 1,
+    "clip": "5s",
+    "seconds": 4.607479278998653,
+    "text": "我说一份米线一份蛋糕。",
+    "errors": 0,
+    "reference_chars": 10
+  },
+  {
+    "trial": 1,
+    "clip": "3s",
+    "seconds": 4.419523189999381,
+    "text": "我是说今天我吃了饭",
+    "errors": 0,
+    "reference_chars": 9
+  },
+  {
+    "trial": 2,
+    "clip": "3s",
+    "seconds": 4.423540661000516,
+    "text": "我是说今天我吃了饭",
+    "errors": 0,
+    "reference_chars": 9
+  },
+  {
+    "trial": 2,
+    "clip": "5s",
+    "seconds": 4.56350713699976,
+    "text": "我说一份米线一份蛋糕。",
+    "errors": 0,
+    "reference_chars": 10
+  },
+  {
+    "trial": 2,
+    "clip": "7s",
+    "seconds": 4.727529884999967,
+    "text": "一份凄烈的西兰花。\n最后呢,我觉得。",
+    "errors": 3,
+    "reference_chars": 11
+  },
+  {
+    "trial": 2,
+    "clip": "10s",
+    "seconds": 5.031533486999251,
+    "text": "最后我觉得点了太多了,吃得太饱了,\n然后我就回庆市了,没有吃完,",
+    "errors": 2,
+    "reference_chars": 27
+  },
+  {
+    "trial": 2,
+    "clip": "13s",
+    "seconds": 5.539312030001383,
+    "text": "我是说今天我吃了饭,我吃了那个一份米线,一份蛋羹,一份西湖式炒鸡蛋,一份西兰花。",
+    "errors": 2,
+    "reference_chars": 35
+  }
+]
