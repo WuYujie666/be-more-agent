@@ -102,14 +102,10 @@ def run_script(engine, path):
 
 
 def _finish(engine):
-    """对话结束后确保每日摘要生成并打印（脚本/交互通用）。
-    若已进入 ask_audio 应答（handle_audio_answer 已异步起摘要线程），等它跑完——
-    否则直接退出会把 daemon 线程杀掉，摘要来不及生成；其余情况同步补生成一次。"""
-    print("\n=== 生成每日摘要 ===", flush=True)
-    if engine.summary_thread is not None:
-        engine.summary_thread.join()
-    else:
-        engine.finalize_session_summary()
+    """Wait for the session write; no separate greeting summary is generated."""
+    print("\n=== 保存会话记忆 ===", flush=True)
+    if engine.memory_thread is not None:
+        engine.memory_thread.join()
     engine.close()
 
 

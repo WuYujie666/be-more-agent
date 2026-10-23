@@ -1,0 +1,92 @@
+{
+  "backend": "native",
+  "live": true,
+  "rows": [
+    {
+      "case": "recent",
+      "trial": 0,
+      "text": "好的，刚才聊的不会存下来。现在想轻轻松口气，还是想安静一会儿？",
+      "first_text_seconds": 1.2225846390001607,
+      "total_seconds": 1.440891164000277,
+      "passed": false,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1169,
+            "output": 20,
+            "cached": 512
+          }
+        ]
+      },
+      "rss_current_mib": 290.265625
+    },
+    {
+      "case": "recent_paraphrase",
+      "trial": 0,
+      "text": "好的，刚才聊的这些我都不留档，以前记住的事情照旧保留。",
+      "first_text_seconds": 1.0416759670006286,
+      "total_seconds": 1.212723417000234,
+      "passed": false,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1179,
+            "output": 17,
+            "cached": 512
+          }
+        ]
+      },
+      "rss_current_mib": 292.46875
+    },
+    {
+      "case": "recent_negative",
+      "trial": 0,
+      "text": "好的，刚才聊的我都记着了，下次可以从那里接着聊。\n\n现在先不往后想了吧，眼睛闭上，慢慢呼吸就好。",
+      "first_text_seconds": 0.8000201499999093,
+      "total_seconds": 1.093060169000637,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1172,
+            "output": 29,
+            "cached": 512
+          }
+        ]
+      },
+      "rss_current_mib": 294.703125
+    },
+    {
+      "case": "recent_hypothetical",
+      "trial": 0,
+      "text": "如果对方明确说别记住，我会先确认是不是只指刚才这段，然后清掉这次还没存下的对话，已有的长期记录不动。今晚你要是有什么想说的，说了也可以先放下。",
+      "first_text_seconds": 1.0215296099995612,
+      "total_seconds": 1.3034752619996652,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1181,
+            "output": 41,
+            "cached": 512
+          }
+        ]
+      },
+      "rss_current_mib": 296.875
+    }
+  ],
+  "import_seconds": 0.2374626940008966,
+  "rss_peak_mib": 294.953125
+}

@@ -98,13 +98,55 @@ class MemoryService:
     def _operate(self, operation, **args):
         if operation == 'add':
             messages = args.get('messages') or [{'role': 'user', 'content': args['text']}]
-            return self.store.add(messages,
-                                  user_id=self.user_id,
-                                  metadata={'session_id': args['session_id'],
-                                            'source': 'user_transcript',
-                                            'observed_at': datetime.now(ZoneInfo('Asia/Shanghai')).isoformat()})
+            from session_plans import extract_plans, apply_plans
+            observed_at = args['observed_at']
+            existing = [r for r in self.store.get_all(filters={'user_id': self.user_id}, top_k=10000)['results']
+                        if (r.get('metadata') or {}).get('kind') == 'plan']
+            # Validate every proposed plan before writing any of them. Failures
+            # propagate to the write receipt rather than pretending it was saved.
+            batch = extract_plans(self.store.llm, messages, existing, observed_at)
+            plans = apply_plans(self.store, self.user_id, batch, existing, args['session_id'], observed_at)
+            # The same serialized job handles ordinary facts. Plans have one
+            # structured source of truth and are excluded from generic extraction.
+            clean = [{'role': m['role'], 'content': m['content']} for m in messages]
+            facts = self.store.add(clean, user_id=self.user_id,
+                metadata={'session_id': args['session_id'], 'source': 'user_transcript', 'observed_at': observed_at},
+                prompt=self.store.custom_instructions + ' 不记录计划、考试/约会等未来事件、改期或取消；这些由同一会话整理流程单独管理。')
+            return {'results': plans + facts.get('results', [])}
+        if operation == 'managed':
+            kind, key = args['kind'], args['key']
+            if kind not in ('preference', 'plan'):
+                raise ValueError('Unknown managed memory kind')
+            metadata = {'kind': kind, 'key': key, 'value': args['value']}
+            if kind == 'plan':
+                metadata['asked'] = False
+            rows = self.store.get_all(filters={'user_id': self.user_id}, top_k=10000)['results']
+            matches = [r for r in rows if (r.get('metadata') or {}).get('kind') == kind
+                       and (r.get('metadata') or {}).get('key') == key]
+            if matches:
+                # Do not reopen an already-asked identical plan on duplicate submission.
+                if kind == 'plan':
+                    metadata['asked'] = (matches[0].get('metadata') or {}).get('asked', False)
+                return self.store.update(matches[0]['id'], text=args['text'], metadata=metadata)
+            return self.store.add(args['text'], user_id=self.user_id, infer=False, metadata=metadata)
+        if operation == 'followup':
+            from datetime import date
+            today = date.fromisoformat(args['today'])
+            rows = self.store.get_all(filters={'user_id': self.user_id}, top_k=10000)['results']
+            for row in rows:
+                meta = row.get('metadata') or {}
+                if meta.get('kind') != 'plan' or meta.get('asked') or meta.get('status', 'active') != 'active':
+                    continue
+                try:
+                    days = (today - date.fromisoformat(meta['value'])).days
+                except (ValueError, KeyError):
+                    continue
+                if 1 <= days <= 7:
+                    self.store.update(row['id'], metadata={**meta, 'asked': True})
+                    return row['memory']
+            return None
         if operation == 'list':
-            return self.store.get_all(filters={'user_id': self.user_id}, top_k=10000)
+            return self.store.get_all(filters={'user_id': self.user_id}, top_k=args.get('limit', 10000))
         if operation == 'flush':
             return True
         if operation in ('update', 'delete', 'history'):
@@ -114,7 +156,12 @@ class MemoryService:
             if operation == 'history':
                 return self.store.history(args['memory_id'])
             if operation == 'update':
-                return self.store.update(args['memory_id'], args['text'])
+                if (record.get('metadata') or {}).get('kind') in ('preference', 'plan'):
+                    raise ValueError('设置或计划请先删除，再登记新的值，避免文字与结构化值不一致')
+                result = self.store.update(args['memory_id'], args['text'])
+                with self.store.db.connection:
+                    self.store.db.connection.execute('DELETE FROM messages')
+                return result
             self.store.delete(args['memory_id'])
             # Mem0 delete retains history; explicit forgetting also removes that text.
             with self.store.db.connection:
@@ -143,12 +190,20 @@ class MemoryService:
             future.set_exception(RuntimeError('Memory queue full'))
         return future
 
-    def search(self, text, timeout=.15):
+    def search(self, text, timeout=.15, strict=False):
         start = time.perf_counter()
+        if not isinstance(text, str) or not text.strip():
+            if strict:
+                raise ValueError('搜索需要明确的非空主题')
+            return []
         if not self.ready.done() or self.ready.exception() is not None:
+            if strict:
+                raise RuntimeError('记忆服务尚未就绪')
             return []
         if not self._lock.acquire(timeout=timeout):
             print('[MEMORY] busy; using current conversation only', flush=True)
+            if strict:
+                raise RuntimeError('记忆服务忙，请稍后再试')
             return []
         try:
             rows = self.store.search(text, filters={'user_id': self.user_id},
@@ -157,6 +212,8 @@ class MemoryService:
             return rows
         except Exception as exc:
             print(f'[MEMORY] search failed ({type(exc).__name__})', flush=True)
+            if strict:
+                raise RuntimeError('记忆查询失败，不能据此判断没有记录') from exc
             return []
         finally:
             self._lock.release()
@@ -165,7 +222,8 @@ class MemoryService:
         return self.remember_session([{'role': 'user', 'content': text}], session_id)
 
     def remember_session(self, messages, session_id):
-        future = self.submit('add', messages=[dict(m) for m in messages], session_id=session_id)
+        future = self.submit('add', messages=[dict(m) for m in messages], session_id=session_id,
+                             observed_at=datetime.now(ZoneInfo('Asia/Shanghai')).isoformat())
         def report(done):
             try:
                 result = done.result()
@@ -175,7 +233,7 @@ class MemoryService:
         future.add_done_callback(report)
         return future
 
-    def close(self, timeout=35):
+    def close(self, timeout=90):
         if self._closed:
             return
         self._closed = True

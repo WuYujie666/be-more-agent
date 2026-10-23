@@ -120,6 +120,8 @@ def chat(*, model, messages, stream=False, options=None, keep_alive=None):
 
 
 def _request(backend, messages, stream, options=None):
+    from companion_tools import time_context
+    messages = [time_context()] + list(messages)
     options = dict(options or {})
     headers = {}
     client = _client

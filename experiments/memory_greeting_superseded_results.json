@@ -1,0 +1,14 @@
+{
+  "checks": {
+    "restart_recall": true,
+    "update_no_old_text": true,
+    "delete_no_reappearance": true
+  },
+  "greetings": [
+    "晚上好。之前聊到过：“用户最近在准备答辩。”。今晚想接着聊，还是聊点别的？",
+    "晚上好。之前聊到过：“用户说答辩改期了。”。今晚想接着聊，还是聊点别的？",
+    "晚上好。今天有什么想分享的吗？"
+  ],
+  "cloud_calls": 0,
+  "status": "已撤回的2天普通事实回顾实验；仅保留历史结果，正式开场只关心到期后1～7天计划。"
+}

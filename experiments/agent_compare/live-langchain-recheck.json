@@ -1,0 +1,100 @@
+{
+  "backend": "langchain",
+  "live": true,
+  "rows": [
+    {
+      "case": "forget",
+      "trial": 0,
+      "text": "已经删掉了，关于你住在哪儿的那条记忆不会再留着。现在心里松一点了吗？",
+      "first_text_seconds": 4.512579910000113,
+      "total_seconds": 4.716057827000441,
+      "passed": true,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "用户居住城市 住在哪个城市",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": [
+              {
+                "id": "59a7fda7-981f-4a4b-ba99-53953a099052",
+                "text": "用户现在住在北京。",
+                "metadata": null
+              }
+            ]
+          }
+        },
+        {
+          "action": {
+            "operation": "forget",
+            "query": "",
+            "memory_id": "59a7fda7-981f-4a4b-ba99-53953a099052",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "对应记录已删除"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 3,
+        "usage": [
+          {
+            "input": 1110,
+            "output": 60,
+            "cached": 256
+          },
+          {
+            "input": 1234,
+            "output": 78,
+            "cached": 1024
+          },
+          {
+            "input": 1338,
+            "output": 20,
+            "cached": 1152
+          }
+        ]
+      }
+    },
+    {
+      "case": "recent",
+      "trial": 0,
+      "text": "好的，本次尚未保存的聊天内容已清除，旧的长期记忆没有删除。",
+      "first_text_seconds": 0.00047961300015231245,
+      "total_seconds": 0.0004921680001643836,
+      "passed": true,
+      "audit": [
+        {
+          "action": {
+            "operation": "forget_recent",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "已放弃本次尚未保存的对话内容，旧长期记录保持不变"
+          }
+        }
+      ],
+      "metrics": {}
+    }
+  ],
+  "import_seconds": 0.2534094319998985,
+  "rss_peak_mib": 328.40625
+}

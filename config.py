@@ -6,7 +6,6 @@ import os
 import re
 import json
 import time
-import datetime
 import contextlib
 
 # sounddevice 只在音频设备查询/录音播放时用到。容错导入：在没装该库的开发机上
@@ -42,25 +41,34 @@ DEFAULT_CONFIG = {
     "whisper_beam_size": 1,    # beam search 宽度，1 = greedy（最快）；whisper-cli 默认 5
     "whisper_best_of": 1,      # best-of 采样数，1 = greedy（最快）；whisper-cli 默认 5
     # --- VAD（免手持续监听）---
+    "voice_interrupt_enabled": True,
+    "voice_duplex_rate": 48000,
+    "barge_in_threshold": 0.7,
+    "barge_in_start_ms": 256,
+    "aec_reference_delay_ms": 10,
+    "vad_backend": "silero",  # silero / webrtc
+    "silero_vad_model": "models/silero-vad/silero_vad.onnx",
+    "silero_vad_threshold": 0.5,
     "vad_aggressiveness": 3,   # webrtcvad 灵敏度 0~3，越大越严格（越不易把噪声当人声）
     "vad_start_ms": 150,       # 连续多少毫秒判定为人声才算"开始说话"（防瞬时噪声误触发）
     "vad_silence_ms": 900,     # 尾部静音多久判定"说完"
     "vad_max_record_ms": 30000,# 单次最长录音
     "vad_preroll_ms": 300,     # 起始前回看缓冲，避免吞掉第一个字
+    "vad_diagnostics_enabled": True,  # 保存每次触发的 WAV 和指标，便于回听误触发
+    "vad_diagnostics_dir": "diagnostics/vad",
+    "vad_diagnostics_max_captures": 100,  # 自动删除最旧样本（WAV + JSON）
     # --- 睡前引导 / 放松音频 ---
     "max_chat_turns": 5,                       # 聊满几轮后主动收尾过渡
     "default_audio": "white_noise",            # 默认助眠音频类型：white_noise / music
     "relaxation_audio_dir": "sounds/relaxation",  # 放松音频根目录（下分 white_noise/ 和 music/）
+    "speech_gain": 1.0,                       # TTS 说话音量（0～1）
     "relaxation_gain": 0.6,                     # 助眠音频音量（相对 TTS 满音量），做音量平衡
     "relaxation_max_minutes": 45,              # 助眠音频最长播放分钟数，到点自动关机
-    "summaries_file": "summaries.json",        # 每日一句话摘要存档
-    "summary_recent_days": 2,                  # 开场时「昨天摘要」允许的最大天数
     "transition_prompt": "用户表达了睡意，但没有指定想听哪种助眠声音。请先用一句话简短回应用户这句话，再温柔收尾，并问用户想听白噪音还是轻音乐。不要出主意、不要解决问题。",
     "max_turns_prompt": "对话已达到本次睡前陪伴轮数上限。回复必须分两步：第一句必须直接承接用户最后一句话，并明确提到用户最后一句里的核心内容；如果用户最后一句是在提问，不要给建议或展开解决，只温柔接住并说先记下。第二句再温柔收尾，说今天聊了很多就到这里、该晚安了，并说明马上播放默认白噪音。不要再询问白噪音还是轻音乐，不要出主意、不要解决问题。",
     "decline_audio_prompt": "用户还不想睡或不想听助眠声音。请先用一句温柔的话安抚，表示理解他现在还不太想睡；再说一句好好睡觉能帮身体恢复精力的好处；最后道一句晚安、祝好梦。",
     "goodnight_prompt": "请只说一句温柔的晚安、祝好梦。",
     "story_prompt": "用户想听故事。可以讲一个温柔、适合睡前的短故事，长度可以比平时长一些（几句到一小段即可），讲完轻声收尾。",
-    "summary_prompt": "你是睡前陪伴机器人，请对用户说一句开场白：先说“晚上好。”，再用一句话回顾用户昨天聊了什么、心情如何，最后问“今天有什么想分享的吗？”。整段只输出这一句话，不要引号、不要换行。用户昨天说：",
     "debug_prompt": False,                      # 打开后每次调 LLM 前打印完整 messages，便于调 prompt
 }
 
@@ -196,43 +204,6 @@ def extract_audio_tag(text):
     return clean, audio_type
 
 
-def load_recent_summary(summaries_file=None, recent_days=None):
-    """读取最近一条每日摘要：日期距今 ≤ recent_days 天则返回摘要文本，否则 None。"""
-    summaries_file = summaries_file or CURRENT_CONFIG.get("summaries_file", "summaries.json")
-    recent_days = recent_days if recent_days is not None \
-        else CURRENT_CONFIG.get("summary_recent_days", 2)
-    if not os.path.exists(summaries_file):
-        return None
-    try:
-        with open(summaries_file, "r", encoding="utf-8") as f:
-            items = json.load(f)
-        if not items:
-            return None
-        last = items[-1]
-        d = datetime.date.fromisoformat(last["date"])
-        if (datetime.date.today() - d).days <= recent_days:
-            return last.get("summary") or None
-    except Exception as e:
-        print(f"[SUMMARY] load failed: {e}", flush=True)
-    return None
-
-
-def append_summary(summary, summaries_file=None, keep=5):
-    """把一条带当天日期的摘要追加进存档，只保留最近 keep 条。"""
-    summaries_file = summaries_file or CURRENT_CONFIG.get("summaries_file", "summaries.json")
-    items = []
-    if os.path.exists(summaries_file):
-        try:
-            with open(summaries_file, "r", encoding="utf-8") as f:
-                items = json.load(f)
-        except Exception:
-            items = []
-    items.append({"date": datetime.date.today().isoformat(), "summary": summary})
-    items = items[-keep:]
-    with open(summaries_file, "w", encoding="utf-8") as f:
-        json.dump(items, f, ensure_ascii=False, indent=2)
-
-
 def load_config():
     config = DEFAULT_CONFIG.copy()
     if os.path.exists(CONFIG_FILE):
@@ -325,3 +296,9 @@ class BotStates:
     WARMUP = "warmup"
     GREETING = "greeting"
     SLEEP = "sleep"
+
+
+def debug_log(message, *args):
+    """Use the existing JSON debug switch for agent/tool diagnostics."""
+    if CURRENT_CONFIG.get('debug_prompt'):
+        print(message % args if args else message, flush=True)

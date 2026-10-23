@@ -1,0 +1,58 @@
+{
+  "native": {
+    "offline_passed": 40,
+    "offline_total": 40,
+    "offline_peak_rss_mib": 92.578125,
+    "offline_last_rss_mib": 94.328125,
+    "offline_warm_chat_ms": 14.934296000092218,
+    "offline_warm_two_settings_ms": 23.257937000153106,
+    "live_initial_passed": 6,
+    "live_initial_total": 8,
+    "targeted_recheck_passed": true,
+    "live_with_mem0_peak_rss_mib": 305.21875,
+    "first_audio_after_asr_seconds": [
+      3.1610872330002167,
+      2.139623543000198
+    ]
+  },
+  "langchain": {
+    "offline_passed": 40,
+    "offline_total": 40,
+    "offline_peak_rss_mib": 137.828125,
+    "offline_last_rss_mib": 139.90625,
+    "offline_warm_chat_ms": 26.332632500043474,
+    "offline_warm_two_settings_ms": 41.04233399993973,
+    "live_initial_passed": 7,
+    "live_initial_total": 8,
+    "targeted_recheck_passed": true,
+    "live_with_mem0_peak_rss_mib": 343.65625,
+    "first_audio_after_asr_seconds": [
+      2.7550998260003325,
+      2.344132380999781
+    ]
+  },
+  "pydantic": {
+    "offline_passed": 40,
+    "offline_total": 40,
+    "offline_peak_rss_mib": 114.0625,
+    "offline_last_rss_mib": 115.5,
+    "offline_warm_chat_ms": 25.719847000118534,
+    "offline_warm_two_settings_ms": 43.21723350017237,
+    "live_initial_passed": 7,
+    "live_initial_total": 8,
+    "targeted_recheck_passed": true,
+    "live_with_mem0_peak_rss_mib": 328.625,
+    "first_audio_after_asr_seconds": [
+      3.2416829130002043,
+      2.7601018290001775
+    ]
+  },
+  "metered_pilot_usage": {
+    "input": 74443,
+    "output": 3118,
+    "cached": 33920
+  },
+  "metered_pilot_peak_price_estimate_cny": 0.1073468,
+  "cost_scope": "Framework live pilot, targeted rechecks and six voice runs only; excludes three early smoke calls and final memory extraction/summary acceptance calls. Usage-based estimate, not verified bill.",
+  "status": "Historical streaming implementation; privacy shortcut successes do not establish semantic reliability. Current results: summary-decision.json"
+}

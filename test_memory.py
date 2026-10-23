@@ -19,7 +19,7 @@ class IO:
 
 class MemoryTests(unittest.TestCase):
     def engine(self):
-        with patch.dict(CURRENT_CONFIG,{'long_term_memory':False}):return ChatEngine(IO())
+        with patch.dict(CURRENT_CONFIG,{'long_term_memory':False,'agent_backend':'legacy'}):return ChatEngine(IO())
 
     def test_forget_is_explicit_not_substring(self):
         e=self.engine();e.session_memory=[{'role':'user','content':'我喜欢雨声'}]
@@ -50,12 +50,12 @@ class MemoryTests(unittest.TestCase):
             e.close()
         e.memory.remember_session.assert_not_called()
 
-    def test_summary_failure_does_not_prevent_session_memory(self):
+    def test_finalization_does_not_request_separate_summary(self):
         e=self.engine();e.memory=Mock()
         e.session_memory=[{'role':'user','content':'我喜欢雨声'}]
-        e.chat_user_texts=['我喜欢雨声']
-        with patch('chat_engine.llm.chat',side_effect=RuntimeError('summary unavailable')):
-            e.finalize_session_summary()
+        with patch('chat_engine.llm.chat') as cloud:
+            e.finalize_session_memory()
+        cloud.assert_not_called()
         e.memory.remember_session.assert_called_once()
 
     def test_failed_clear_does_not_claim_success(self):
@@ -66,25 +66,43 @@ class MemoryTests(unittest.TestCase):
         e.memory=Failed();e._handle_forget('清空记忆')
         self.assertIn('没能',e.io.spoken[-1])
 
-    def test_inflight_summary_cannot_restore_forgotten_text(self):
-        e=self.engine();e.chat_user_texts=['secret']
-        started=threading.Event();release=threading.Event()
-        def summarize(**kwargs):
-            started.set();release.wait(3)
-            return {'message':{'content':'secret summary'}}
+    def test_inflight_write_then_clear_cannot_restore_memory(self):
+        started=threading.Event();release=threading.Event();rows=[]
+        class Store:
+            custom_instructions=""
+            llm=Mock(generate_response=lambda **kw: '{"changes":[]}')
+            def get_all(self,**kw):return {"results":[]}
+            def __init__(self):
+                from types import SimpleNamespace
+                self.vector_store=SimpleNamespace(client=SimpleNamespace(close=lambda:None))
+                self.db=Mock()
+                self.db.connection=Mock()
+                self.db.connection.__enter__=Mock(return_value=self.db.connection)
+                self.db.connection.__exit__=Mock(return_value=False)
+            def add(self,*a,**kw):
+                started.set();release.wait(3);rows.append('secret');return {'results':[]}
+            def delete_all(self,**kw):rows.clear()
         with tempfile.TemporaryDirectory() as d:
-            summary=Path(d)/'summary.json';summary.write_text('[]')
-            with patch.dict(CURRENT_CONFIG,{'summaries_file':str(summary)}), patch('chat_engine.llm.chat',side_effect=summarize):
-                t=threading.Thread(target=e.finalize_session_summary);t.start()
+            m=MemoryService(d,store_factory=lambda d:Store())
+            try:
+                m.ready.result(2)
+                e=self.engine();e.memory=m
+                e.session_memory=[{'role':'user','content':'secret'}]
+                e.finalize_session_memory()
                 self.assertTrue(started.wait(2))
-                e._handle_forget('请清空记忆')
+                t=threading.Thread(target=e._handle_forget,args=('清空记忆',));t.start()
                 release.set();t.join(3)
-                self.assertFalse(summary.exists())
-                self.assertEqual(e.chat_user_texts,[])
+                self.assertFalse(t.is_alive())
+                e.finalize_session_memory();m.submit('flush').result(2)
+                self.assertEqual(rows,[])
+            finally:release.set();m.close()
 
     def test_search_busy_does_not_wait_for_cloud(self):
         started=threading.Event();release=threading.Event()
         class FakeStore:
+            custom_instructions=""
+            llm=Mock(generate_response=lambda **kw: '{"changes":[]}')
+            def get_all(self,**kw):return {"results":[]}
             def add(self,*a,**kw):started.set();release.wait(3);return {'results':[]}
             def __init__(self):
                 from types import SimpleNamespace

@@ -1,0 +1,21 @@
+{
+  "checks": {
+    "staged_preference": true,
+    "preference_restart": true,
+    "temporary_override": true,
+    "temporary_not_persisted": true,
+    "invalid_setting_rejected": true,
+    "unknown_memory_rejected": true,
+    "revise_success": true,
+    "revise_restart": true,
+    "forget_success": true,
+    "forget_no_history": true,
+    "followup_due": true,
+    "followup_once_restart": true,
+    "engine_commits_without_transcript": true,
+    "forget_recent_blocks_extraction": true,
+    "clear_all": true
+  },
+  "passed": 15,
+  "total": 15
+}

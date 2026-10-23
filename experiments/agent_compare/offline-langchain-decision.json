@@ -1,0 +1,3229 @@
+{
+  "protocol": "structured-decision-v1",
+  "backend": "langchain",
+  "live": false,
+  "rows": [
+    {
+      "case": "chat",
+      "trial": 0,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 1.6714023989998168,
+      "total_seconds": 1.6714786200000162,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 120.3125
+    },
+    {
+      "case": "preference",
+      "trial": 0,
+      "text": "回复长度已设为简短。本次会话结束时保存为默认偏好。主动提问已设为少一些。本次会话结束时保存为默认偏好。",
+      "first_text_seconds": 0.022895592000168108,
+      "total_seconds": 0.02295775800030242,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "preference",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "reply_length",
+            "value": "short",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "reply_length": "short"
+              },
+              "save_at_session_end": true
+            }
+          }
+        },
+        {
+          "action": {
+            "operation": "preference",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "questions",
+            "value": "fewer",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "questions": "fewer"
+              },
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "preference",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "reply_length",
+                "value": "short",
+                "due_date": ""
+              },
+              {
+                "operation": "preference",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "questions",
+                "value": "fewer",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 121.0
+    },
+    {
+      "case": "settings",
+      "trial": 0,
+      "text": "助眠音量已设为30%。仅对本次会话生效。助眠时长已设为10分钟。仅对本次会话生效。",
+      "first_text_seconds": 0.021543591000408924,
+      "total_seconds": 0.021602683000310208,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "settings",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "volume",
+            "value": "0.3",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "volume": 0.3
+              },
+              "save_at_session_end": false
+            }
+          }
+        },
+        {
+          "action": {
+            "operation": "settings",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "minutes",
+            "value": "10",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "minutes": 10.0
+              },
+              "save_at_session_end": false
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "settings",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "volume",
+                "value": "0.3",
+                "due_date": ""
+              },
+              {
+                "operation": "settings",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "minutes",
+                "value": "10",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 121.953125
+    },
+    {
+      "case": "plan",
+      "trial": 0,
+      "text": "已登记2026-10-23的“项目答辩”，本次会话结束时保存。",
+      "first_text_seconds": 0.021351094000237936,
+      "total_seconds": 0.021411777999674086,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "plan",
+            "query": "",
+            "memory_id": "",
+            "text": "项目答辩",
+            "key": "",
+            "value": "",
+            "due_date": "2026-10-23"
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "plan": "项目答辩",
+              "date": "2026-10-23",
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "plan",
+                "query": "",
+                "memory_id": "",
+                "text": "项目答辩",
+                "key": "",
+                "value": "",
+                "due_date": "2026-10-23"
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 122.9375
+    },
+    {
+      "case": "revise",
+      "trial": 0,
+      "text": "找到的那条记忆已更正。",
+      "first_text_seconds": 0.046479433000058634,
+      "total_seconds": 0.046556968999539095,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "用户住在哪里",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": [
+              {
+                "id": "home",
+                "text": "用户现在住在北京。",
+                "metadata": {}
+              }
+            ]
+          }
+        },
+        {
+          "action": {
+            "operation": "revise",
+            "query": "",
+            "memory_id": "home",
+            "text": "用户现在住在上海。",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "对应记录已修改"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          },
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "search",
+                "query": "用户住在哪里",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          },
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "revise",
+                "query": "",
+                "memory_id": "home",
+                "text": "用户现在住在上海。",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 123.71875
+    },
+    {
+      "case": "forget",
+      "trial": 0,
+      "text": "找到的那条记忆已删除。",
+      "first_text_seconds": 0.04598568100027478,
+      "total_seconds": 0.046049421000134316,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "用户住在哪里",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": [
+              {
+                "id": "home",
+                "text": "用户现在住在北京。",
+                "metadata": {}
+              }
+            ]
+          }
+        },
+        {
+          "action": {
+            "operation": "forget",
+            "query": "",
+            "memory_id": "home",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "对应记录已删除"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          },
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "search",
+                "query": "用户住在哪里",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          },
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget",
+                "query": "",
+                "memory_id": "home",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 124.4375
+    },
+    {
+      "case": "ambiguous",
+      "trial": 0,
+      "text": "你指的是哪件事呢？",
+      "first_text_seconds": 0.021121744999618386,
+      "total_seconds": 0.02118479999990086,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "clarify",
+            "reply": "你指的是哪件事呢？",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 124.4375
+    },
+    {
+      "case": "recent",
+      "trial": 0,
+      "text": "本次尚未保存的聊天内容已清除，旧的长期记忆没有删除。",
+      "first_text_seconds": 0.02112772500004212,
+      "total_seconds": 0.021187021000514505,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "forget_recent",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "已放弃本次尚未保存的对话内容，旧长期记录保持不变"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget_recent",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 124.5
+    },
+    {
+      "case": "recent_paraphrase",
+      "trial": 0,
+      "text": "本次尚未保存的聊天内容已清除，旧的长期记忆没有删除。",
+      "first_text_seconds": 0.025921460000063234,
+      "total_seconds": 0.025983569999880274,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "forget_recent",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "已放弃本次尚未保存的对话内容，旧长期记录保持不变"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget_recent",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 125.21875
+    },
+    {
+      "case": "recent_negative",
+      "trial": 0,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.02113587399981043,
+      "total_seconds": 0.021200761999352835,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 125.234375
+    },
+    {
+      "case": "recent_hypothetical",
+      "trial": 0,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.02087415499954659,
+      "total_seconds": 0.02093441399938456,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 125.28125
+    },
+    {
+      "case": "chat",
+      "trial": 1,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.025686277999739104,
+      "total_seconds": 0.025748850999661954,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 125.96875
+    },
+    {
+      "case": "preference",
+      "trial": 1,
+      "text": "回复长度已设为简短。本次会话结束时保存为默认偏好。主动提问已设为少一些。本次会话结束时保存为默认偏好。",
+      "first_text_seconds": 0.02147492499989312,
+      "total_seconds": 0.02154348000021855,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "preference",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "reply_length",
+            "value": "short",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "reply_length": "short"
+              },
+              "save_at_session_end": true
+            }
+          }
+        },
+        {
+          "action": {
+            "operation": "preference",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "questions",
+            "value": "fewer",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "questions": "fewer"
+              },
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "preference",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "reply_length",
+                "value": "short",
+                "due_date": ""
+              },
+              {
+                "operation": "preference",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "questions",
+                "value": "fewer",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 125.984375
+    },
+    {
+      "case": "settings",
+      "trial": 1,
+      "text": "助眠音量已设为30%。仅对本次会话生效。助眠时长已设为10分钟。仅对本次会话生效。",
+      "first_text_seconds": 0.021279298000081326,
+      "total_seconds": 0.021340408000469324,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "settings",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "volume",
+            "value": "0.3",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "volume": 0.3
+              },
+              "save_at_session_end": false
+            }
+          }
+        },
+        {
+          "action": {
+            "operation": "settings",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "minutes",
+            "value": "10",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "minutes": 10.0
+              },
+              "save_at_session_end": false
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "settings",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "volume",
+                "value": "0.3",
+                "due_date": ""
+              },
+              {
+                "operation": "settings",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "minutes",
+                "value": "10",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 126.046875
+    },
+    {
+      "case": "plan",
+      "trial": 1,
+      "text": "已登记2026-10-23的“项目答辩”，本次会话结束时保存。",
+      "first_text_seconds": 0.026208086000224284,
+      "total_seconds": 0.026270622000083677,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "plan",
+            "query": "",
+            "memory_id": "",
+            "text": "项目答辩",
+            "key": "",
+            "value": "",
+            "due_date": "2026-10-23"
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "plan": "项目答辩",
+              "date": "2026-10-23",
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "plan",
+                "query": "",
+                "memory_id": "",
+                "text": "项目答辩",
+                "key": "",
+                "value": "",
+                "due_date": "2026-10-23"
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 126.78125
+    },
+    {
+      "case": "revise",
+      "trial": 1,
+      "text": "找到的那条记忆已更正。",
+      "first_text_seconds": 0.04184186399925238,
+      "total_seconds": 0.04190801099957753,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "用户住在哪里",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": [
+              {
+                "id": "home",
+                "text": "用户现在住在北京。",
+                "metadata": {}
+              }
+            ]
+          }
+        },
+        {
+          "action": {
+            "operation": "revise",
+            "query": "",
+            "memory_id": "home",
+            "text": "用户现在住在上海。",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "对应记录已修改"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          },
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "search",
+                "query": "用户住在哪里",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          },
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "revise",
+                "query": "",
+                "memory_id": "home",
+                "text": "用户现在住在上海。",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 126.90625
+    },
+    {
+      "case": "forget",
+      "trial": 1,
+      "text": "找到的那条记忆已删除。",
+      "first_text_seconds": 0.04671676400084834,
+      "total_seconds": 0.04678809600045497,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "用户住在哪里",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": [
+              {
+                "id": "home",
+                "text": "用户现在住在北京。",
+                "metadata": {}
+              }
+            ]
+          }
+        },
+        {
+          "action": {
+            "operation": "forget",
+            "query": "",
+            "memory_id": "home",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "对应记录已删除"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          },
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "search",
+                "query": "用户住在哪里",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          },
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget",
+                "query": "",
+                "memory_id": "home",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 127.640625
+    },
+    {
+      "case": "ambiguous",
+      "trial": 1,
+      "text": "你指的是哪件事呢？",
+      "first_text_seconds": 0.021037133999925572,
+      "total_seconds": 0.02110179999999673,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "clarify",
+            "reply": "你指的是哪件事呢？",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 127.671875
+    },
+    {
+      "case": "recent",
+      "trial": 1,
+      "text": "本次尚未保存的聊天内容已清除，旧的长期记忆没有删除。",
+      "first_text_seconds": 0.025678204000541882,
+      "total_seconds": 0.025741333000041777,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "forget_recent",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "已放弃本次尚未保存的对话内容，旧长期记录保持不变"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget_recent",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 128.375
+    },
+    {
+      "case": "recent_paraphrase",
+      "trial": 1,
+      "text": "本次尚未保存的聊天内容已清除，旧的长期记忆没有删除。",
+      "first_text_seconds": 0.02184966099957819,
+      "total_seconds": 0.021923196999523498,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "forget_recent",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "已放弃本次尚未保存的对话内容，旧长期记录保持不变"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget_recent",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 128.375
+    },
+    {
+      "case": "recent_negative",
+      "trial": 1,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.021309500999450393,
+      "total_seconds": 0.02137346399922535,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 128.40625
+    },
+    {
+      "case": "recent_hypothetical",
+      "trial": 1,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.04202013899976009,
+      "total_seconds": 0.042087564000212296,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 129.09375
+    },
+    {
+      "case": "chat",
+      "trial": 2,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.021298519999618293,
+      "total_seconds": 0.021358723000048485,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 129.09375
+    },
+    {
+      "case": "preference",
+      "trial": 2,
+      "text": "回复长度已设为简短。本次会话结束时保存为默认偏好。主动提问已设为少一些。本次会话结束时保存为默认偏好。",
+      "first_text_seconds": 0.021028967999882298,
+      "total_seconds": 0.02108620799936034,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "preference",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "reply_length",
+            "value": "short",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "reply_length": "short"
+              },
+              "save_at_session_end": true
+            }
+          }
+        },
+        {
+          "action": {
+            "operation": "preference",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "questions",
+            "value": "fewer",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "questions": "fewer"
+              },
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "preference",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "reply_length",
+                "value": "short",
+                "due_date": ""
+              },
+              {
+                "operation": "preference",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "questions",
+                "value": "fewer",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.109375
+    },
+    {
+      "case": "settings",
+      "trial": 2,
+      "text": "助眠音量已设为30%。仅对本次会话生效。助眠时长已设为10分钟。仅对本次会话生效。",
+      "first_text_seconds": 0.027056834000177332,
+      "total_seconds": 0.02711831499982509,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "settings",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "volume",
+            "value": "0.3",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "volume": 0.3
+              },
+              "save_at_session_end": false
+            }
+          }
+        },
+        {
+          "action": {
+            "operation": "settings",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "minutes",
+            "value": "10",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "minutes": 10.0
+              },
+              "save_at_session_end": false
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "settings",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "volume",
+                "value": "0.3",
+                "due_date": ""
+              },
+              {
+                "operation": "settings",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "minutes",
+                "value": "10",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.140625
+    },
+    {
+      "case": "plan",
+      "trial": 2,
+      "text": "已登记2026-10-23的“项目答辩”，本次会话结束时保存。",
+      "first_text_seconds": 0.02127790900067339,
+      "total_seconds": 0.021342020000702178,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "plan",
+            "query": "",
+            "memory_id": "",
+            "text": "项目答辩",
+            "key": "",
+            "value": "",
+            "due_date": "2026-10-23"
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "plan": "项目答辩",
+              "date": "2026-10-23",
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "plan",
+                "query": "",
+                "memory_id": "",
+                "text": "项目答辩",
+                "key": "",
+                "value": "",
+                "due_date": "2026-10-23"
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.140625
+    },
+    {
+      "case": "revise",
+      "trial": 2,
+      "text": "找到的那条记忆已更正。",
+      "first_text_seconds": 0.045795219999490655,
+      "total_seconds": 0.04585925599985785,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "用户住在哪里",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": [
+              {
+                "id": "home",
+                "text": "用户现在住在北京。",
+                "metadata": {}
+              }
+            ]
+          }
+        },
+        {
+          "action": {
+            "operation": "revise",
+            "query": "",
+            "memory_id": "home",
+            "text": "用户现在住在上海。",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "对应记录已修改"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          },
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "search",
+                "query": "用户住在哪里",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          },
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "revise",
+                "query": "",
+                "memory_id": "home",
+                "text": "用户现在住在上海。",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.15625
+    },
+    {
+      "case": "forget",
+      "trial": 2,
+      "text": "找到的那条记忆已删除。",
+      "first_text_seconds": 0.04162364500007243,
+      "total_seconds": 0.04168920000029175,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "用户住在哪里",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": [
+              {
+                "id": "home",
+                "text": "用户现在住在北京。",
+                "metadata": {}
+              }
+            ]
+          }
+        },
+        {
+          "action": {
+            "operation": "forget",
+            "query": "",
+            "memory_id": "home",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "对应记录已删除"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          },
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "search",
+                "query": "用户住在哪里",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          },
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget",
+                "query": "",
+                "memory_id": "home",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.171875
+    },
+    {
+      "case": "ambiguous",
+      "trial": 2,
+      "text": "你指的是哪件事呢？",
+      "first_text_seconds": 0.02501474899963796,
+      "total_seconds": 0.025081470999793964,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "clarify",
+            "reply": "你指的是哪件事呢？",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 129.1875
+    },
+    {
+      "case": "recent",
+      "trial": 2,
+      "text": "本次尚未保存的聊天内容已清除，旧的长期记忆没有删除。",
+      "first_text_seconds": 0.021313242000360333,
+      "total_seconds": 0.02138157500030502,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "forget_recent",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "已放弃本次尚未保存的对话内容，旧长期记录保持不变"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget_recent",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.1875
+    },
+    {
+      "case": "recent_paraphrase",
+      "trial": 2,
+      "text": "本次尚未保存的聊天内容已清除，旧的长期记忆没有删除。",
+      "first_text_seconds": 0.021082393000142474,
+      "total_seconds": 0.021146373999727075,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "forget_recent",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "已放弃本次尚未保存的对话内容，旧长期记录保持不变"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget_recent",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.21875
+    },
+    {
+      "case": "recent_negative",
+      "trial": 2,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.025370540999574587,
+      "total_seconds": 0.02543818799949804,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 129.21875
+    },
+    {
+      "case": "recent_hypothetical",
+      "trial": 2,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.021244761999696493,
+      "total_seconds": 0.021318520000022545,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 129.21875
+    },
+    {
+      "case": "chat",
+      "trial": 3,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.020983135999813385,
+      "total_seconds": 0.021049171999948157,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 129.21875
+    },
+    {
+      "case": "preference",
+      "trial": 3,
+      "text": "回复长度已设为简短。本次会话结束时保存为默认偏好。主动提问已设为少一些。本次会话结束时保存为默认偏好。",
+      "first_text_seconds": 0.0257030559996565,
+      "total_seconds": 0.025769832999685605,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "preference",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "reply_length",
+            "value": "short",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "reply_length": "short"
+              },
+              "save_at_session_end": true
+            }
+          }
+        },
+        {
+          "action": {
+            "operation": "preference",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "questions",
+            "value": "fewer",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "questions": "fewer"
+              },
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "preference",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "reply_length",
+                "value": "short",
+                "due_date": ""
+              },
+              {
+                "operation": "preference",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "questions",
+                "value": "fewer",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.234375
+    },
+    {
+      "case": "settings",
+      "trial": 3,
+      "text": "助眠音量已设为30%。仅对本次会话生效。助眠时长已设为10分钟。仅对本次会话生效。",
+      "first_text_seconds": 0.02160621999973955,
+      "total_seconds": 0.02167784900029801,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "settings",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "volume",
+            "value": "0.3",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "volume": 0.3
+              },
+              "save_at_session_end": false
+            }
+          }
+        },
+        {
+          "action": {
+            "operation": "settings",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "minutes",
+            "value": "10",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "minutes": 10.0
+              },
+              "save_at_session_end": false
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "settings",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "volume",
+                "value": "0.3",
+                "due_date": ""
+              },
+              {
+                "operation": "settings",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "minutes",
+                "value": "10",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.234375
+    },
+    {
+      "case": "plan",
+      "trial": 3,
+      "text": "已登记2026-10-23的“项目答辩”，本次会话结束时保存。",
+      "first_text_seconds": 0.021147226000721275,
+      "total_seconds": 0.021210484000221186,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "plan",
+            "query": "",
+            "memory_id": "",
+            "text": "项目答辩",
+            "key": "",
+            "value": "",
+            "due_date": "2026-10-23"
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "plan": "项目答辩",
+              "date": "2026-10-23",
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "plan",
+                "query": "",
+                "memory_id": "",
+                "text": "项目答辩",
+                "key": "",
+                "value": "",
+                "due_date": "2026-10-23"
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.28125
+    },
+    {
+      "case": "revise",
+      "trial": 3,
+      "text": "找到的那条记忆已更正。",
+      "first_text_seconds": 0.04651582199949189,
+      "total_seconds": 0.04658926599950064,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "用户住在哪里",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": [
+              {
+                "id": "home",
+                "text": "用户现在住在北京。",
+                "metadata": {}
+              }
+            ]
+          }
+        },
+        {
+          "action": {
+            "operation": "revise",
+            "query": "",
+            "memory_id": "home",
+            "text": "用户现在住在上海。",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "对应记录已修改"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          },
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "search",
+                "query": "用户住在哪里",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          },
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "revise",
+                "query": "",
+                "memory_id": "home",
+                "text": "用户现在住在上海。",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.28125
+    },
+    {
+      "case": "forget",
+      "trial": 3,
+      "text": "找到的那条记忆已删除。",
+      "first_text_seconds": 0.048549555000136024,
+      "total_seconds": 0.0486358130001463,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "用户住在哪里",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": [
+              {
+                "id": "home",
+                "text": "用户现在住在北京。",
+                "metadata": {}
+              }
+            ]
+          }
+        },
+        {
+          "action": {
+            "operation": "forget",
+            "query": "",
+            "memory_id": "home",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "对应记录已删除"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          },
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "search",
+                "query": "用户住在哪里",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          },
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget",
+                "query": "",
+                "memory_id": "home",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.359375
+    },
+    {
+      "case": "ambiguous",
+      "trial": 3,
+      "text": "你指的是哪件事呢？",
+      "first_text_seconds": 0.021556628000325873,
+      "total_seconds": 0.02162733000022854,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "clarify",
+            "reply": "你指的是哪件事呢？",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 129.375
+    },
+    {
+      "case": "recent",
+      "trial": 3,
+      "text": "本次尚未保存的聊天内容已清除，旧的长期记忆没有删除。",
+      "first_text_seconds": 0.02113583699974697,
+      "total_seconds": 0.021211799000411702,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "forget_recent",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "已放弃本次尚未保存的对话内容，旧长期记录保持不变"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget_recent",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.390625
+    },
+    {
+      "case": "recent_paraphrase",
+      "trial": 3,
+      "text": "本次尚未保存的聊天内容已清除，旧的长期记忆没有删除。",
+      "first_text_seconds": 0.026090884000041115,
+      "total_seconds": 0.026152215999900363,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "forget_recent",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "已放弃本次尚未保存的对话内容，旧长期记录保持不变"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget_recent",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 129.53125
+    },
+    {
+      "case": "recent_negative",
+      "trial": 3,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.021501201999853947,
+      "total_seconds": 0.021575256999312842,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 129.546875
+    },
+    {
+      "case": "recent_hypothetical",
+      "trial": 3,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.021154465999643435,
+      "total_seconds": 0.021215761999883398,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 129.5625
+    },
+    {
+      "case": "chat",
+      "trial": 4,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.026253382000504644,
+      "total_seconds": 0.026317251000364195,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 130.28125
+    },
+    {
+      "case": "preference",
+      "trial": 4,
+      "text": "回复长度已设为简短。本次会话结束时保存为默认偏好。主动提问已设为少一些。本次会话结束时保存为默认偏好。",
+      "first_text_seconds": 0.021753902999989805,
+      "total_seconds": 0.021833179999703134,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "preference",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "reply_length",
+            "value": "short",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "reply_length": "short"
+              },
+              "save_at_session_end": true
+            }
+          }
+        },
+        {
+          "action": {
+            "operation": "preference",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "questions",
+            "value": "fewer",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "questions": "fewer"
+              },
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "preference",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "reply_length",
+                "value": "short",
+                "due_date": ""
+              },
+              {
+                "operation": "preference",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "questions",
+                "value": "fewer",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 130.28125
+    },
+    {
+      "case": "settings",
+      "trial": 4,
+      "text": "助眠音量已设为30%。仅对本次会话生效。助眠时长已设为10分钟。仅对本次会话生效。",
+      "first_text_seconds": 0.02129687200067565,
+      "total_seconds": 0.021358964000683045,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "settings",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "volume",
+            "value": "0.3",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "volume": 0.3
+              },
+              "save_at_session_end": false
+            }
+          }
+        },
+        {
+          "action": {
+            "operation": "settings",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "minutes",
+            "value": "10",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "minutes": 10.0
+              },
+              "save_at_session_end": false
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "settings",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "volume",
+                "value": "0.3",
+                "due_date": ""
+              },
+              {
+                "operation": "settings",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "minutes",
+                "value": "10",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 130.34375
+    },
+    {
+      "case": "plan",
+      "trial": 4,
+      "text": "已登记2026-10-23的“项目答辩”，本次会话结束时保存。",
+      "first_text_seconds": 0.026526470999669982,
+      "total_seconds": 0.02659202499944513,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "plan",
+            "query": "",
+            "memory_id": "",
+            "text": "项目答辩",
+            "key": "",
+            "value": "",
+            "due_date": "2026-10-23"
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "plan": "项目答辩",
+              "date": "2026-10-23",
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "plan",
+                "query": "",
+                "memory_id": "",
+                "text": "项目答辩",
+                "key": "",
+                "value": "",
+                "due_date": "2026-10-23"
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 131.078125
+    },
+    {
+      "case": "revise",
+      "trial": 4,
+      "text": "找到的那条记忆已更正。",
+      "first_text_seconds": 0.04228472900013003,
+      "total_seconds": 0.042359746000329324,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "用户住在哪里",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": [
+              {
+                "id": "home",
+                "text": "用户现在住在北京。",
+                "metadata": {}
+              }
+            ]
+          }
+        },
+        {
+          "action": {
+            "operation": "revise",
+            "query": "",
+            "memory_id": "home",
+            "text": "用户现在住在上海。",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "对应记录已修改"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          },
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "search",
+                "query": "用户住在哪里",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          },
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "revise",
+                "query": "",
+                "memory_id": "home",
+                "text": "用户现在住在上海。",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 131.140625
+    },
+    {
+      "case": "forget",
+      "trial": 4,
+      "text": "找到的那条记忆已删除。",
+      "first_text_seconds": 0.04736816300010105,
+      "total_seconds": 0.04744577300061792,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "用户住在哪里",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": [
+              {
+                "id": "home",
+                "text": "用户现在住在北京。",
+                "metadata": {}
+              }
+            ]
+          }
+        },
+        {
+          "action": {
+            "operation": "forget",
+            "query": "",
+            "memory_id": "home",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "对应记录已删除"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          },
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "search",
+                "query": "用户住在哪里",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          },
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget",
+                "query": "",
+                "memory_id": "home",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 131.828125
+    },
+    {
+      "case": "ambiguous",
+      "trial": 4,
+      "text": "你指的是哪件事呢？",
+      "first_text_seconds": 0.021191687999817077,
+      "total_seconds": 0.02125396500014176,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "clarify",
+            "reply": "你指的是哪件事呢？",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 131.828125
+    },
+    {
+      "case": "recent",
+      "trial": 4,
+      "text": "本次尚未保存的聊天内容已清除，旧的长期记忆没有删除。",
+      "first_text_seconds": 0.021227594999800203,
+      "total_seconds": 0.021290483000484528,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "forget_recent",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "已放弃本次尚未保存的对话内容，旧长期记录保持不变"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget_recent",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 132.734375
+    },
+    {
+      "case": "recent_paraphrase",
+      "trial": 4,
+      "text": "本次尚未保存的聊天内容已清除，旧的长期记忆没有删除。",
+      "first_text_seconds": 0.047175831999993534,
+      "total_seconds": 0.04732383000009577,
+      "passed": true,
+      "error": null,
+      "audit": [
+        {
+          "action": {
+            "operation": "forget_recent",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "已放弃本次尚未保存的对话内容，旧长期记录保持不变"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "forget_recent",
+                "query": "",
+                "memory_id": "",
+                "text": "",
+                "key": "",
+                "value": "",
+                "due_date": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rss_current_mib": 133.453125
+    },
+    {
+      "case": "recent_negative",
+      "trial": 4,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.021239871999569004,
+      "total_seconds": 0.02130375999968237,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 133.46875
+    },
+    {
+      "case": "recent_hypothetical",
+      "trial": 4,
+      "text": "我在这里陪你。",
+      "first_text_seconds": 0.020915359000355238,
+      "total_seconds": 0.020977172999664617,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 0,
+            "output": 0,
+            "cached": 0
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "我在这里陪你。",
+            "actions": []
+          }
+        ]
+      },
+      "rss_current_mib": 133.46875
+    }
+  ],
+  "import_seconds": 0.23170206200029497,
+  "rss_peak_mib": 131.765625
+}

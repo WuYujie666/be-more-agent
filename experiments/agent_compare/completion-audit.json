@@ -1,0 +1,23 @@
+{
+  "objective": "完成 native / LangChain / Pydantic AI 对比并给出建议",
+  "current_protocol": "structured-decision-v1",
+  "default_backend": "native",
+  "evidence": {
+    "three_adapters": "agent_backends/{native,langchain,pydantic}.py",
+    "semantic_tools": "live-*-decision.json: 11 state cases per backend; not a general accuracy estimate",
+    "protocol_repeatability": "offline-*-decision.json: 55 per backend",
+    "actual_asr_tts": "voice-decision.json: 6 real 25s file ASR/model/TTS runs, not GUI/VAD or physical speaker onset",
+    "mem0_restart_preferences_plans_edit_forget": "storage.json: 15 real isolated storage checks",
+    "fallback": "local-fallback-decision.json: real Qwen under injected cloud timeout",
+    "recommendation_method_limits_failures": "REPORT.txt",
+    "unit_regressions": "29 passed; first-clause32 passed; LLM contract passed; pip check passed",
+    "known_unrelated_legacy_failure": "legacy-tests.json: old rain tag assertion fails; config.py unchanged"
+  },
+  "remaining_limits": [
+    "Natural language intent can still be misclassified; structured output is not semantic proof",
+    "All unsaved session context forgotten, not an arbitrary single utterance",
+    "No in-playback microphone control",
+    "No statistical cloud speed ranking from two voice trials",
+    "No complete GUI or VAD acceptance in this comparison"
+  ]
+}

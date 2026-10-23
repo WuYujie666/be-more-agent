@@ -1,0 +1,41 @@
+{
+  "plan_saved": true,
+  "ordinary_fact_saved": true,
+  "records": [
+    {
+      "id": "3cf23c69-ad9e-41de-a416-c1560a7ecf5f",
+      "memory": "用户喜欢西红柿鸡蛋面。",
+      "hash": "a116f51d014dfa9c0dc1029c7da481cb",
+      "metadata": {
+        "session_id": "32bb0e686ddb479d95e8a7bb290abc62",
+        "source": "user_transcript",
+        "observed_at": "2026-10-22T12:49:03.324901+08:00"
+      },
+      "created_at": "2026-10-22T04:49:05.201548+00:00",
+      "updated_at": "2026-10-22T04:49:05.201548+00:00",
+      "user_id": "default",
+      "attributed_to": "user"
+    },
+    {
+      "id": "7dd6568d-ed4d-4ff1-b89c-db6b35dd06ad",
+      "memory": "考试",
+      "hash": "7746fb87c60704a26000455bef0c736b",
+      "metadata": {
+        "kind": "plan",
+        "key": "考试:2026-10-23",
+        "value": "2026-10-23",
+        "status": "active",
+        "asked": false,
+        "source": "session_plan",
+        "session_id": "32bb0e686ddb479d95e8a7bb290abc62",
+        "observed_at": "2026-10-22T12:49:03.324901+08:00"
+      },
+      "created_at": "2026-10-22T04:49:04.603644+00:00",
+      "updated_at": "2026-10-22T04:49:04.603644+00:00",
+      "user_id": "default",
+      "role": "user"
+    }
+  ],
+  "restart_opening": true,
+  "opening": "晚上好。你之前提到“考试”，现在想聊聊这件事吗？"
+}

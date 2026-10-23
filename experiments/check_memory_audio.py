@@ -57,7 +57,7 @@ def worker(phase, directory):
             out['checks']['reply_present'] = bool(out['reply'])
             out['checks']['no_mid_session_write'] = not engine.memory.submit('list').result(20)['results']
             started = time.perf_counter()
-            engine.finalize_session_summary()
+            engine.finalize_session_memory()
             engine.memory.submit('flush').result(90)
             out['seconds']['finalize_and_flush'] = time.perf_counter() - started
             out['records'] = engine.memory.submit('list').result(20)['results']

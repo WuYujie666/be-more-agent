@@ -1,0 +1,92 @@
+{
+  "backend": "pydantic",
+  "live": true,
+  "rows": [
+    {
+      "case": "recent",
+      "trial": 0,
+      "text": "好的，这段我就不记了，安心休息吧。",
+      "first_text_seconds": 1.5485767030004354,
+      "total_seconds": 1.7390302230005545,
+      "passed": false,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1110,
+            "output": 11,
+            "cached": 0
+          }
+        ]
+      },
+      "rss_current_mib": 315.984375
+    },
+    {
+      "case": "recent_paraphrase",
+      "trial": 0,
+      "text": "好的，这次聊的我都不留，以前的事照旧。现在想轻松点聊点什么，还是安静待一会儿？",
+      "first_text_seconds": 0.8755417229995146,
+      "total_seconds": 1.1895077439994566,
+      "passed": false,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1120,
+            "output": 25,
+            "cached": 0
+          }
+        ]
+      },
+      "rss_current_mib": 318.265625
+    },
+    {
+      "case": "recent_negative",
+      "trial": 0,
+      "text": "好，我记着刚才聊的这些，下次咱们接着聊。现在先把心放下来，慢慢呼吸，准备休息吧。",
+      "first_text_seconds": 0.8576090520000434,
+      "total_seconds": 1.125875537999491,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1113,
+            "output": 27,
+            "cached": 0
+          }
+        ]
+      },
+      "rss_current_mib": 320.5625
+    },
+    {
+      "case": "recent_hypothetical",
+      "trial": 0,
+      "text": "如果对方明确说“别记住刚才说的”，我会只清掉这次对话里还没保存的部分，以前长期记下的内容不动。你只是问问，那我就答到这里，什么都不改。",
+      "first_text_seconds": 0.7803452059997653,
+      "total_seconds": 1.0902605330002189,
+      "passed": true,
+      "error": null,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1122,
+            "output": 39,
+            "cached": 0
+          }
+        ]
+      },
+      "rss_current_mib": 322.484375
+    }
+  ],
+  "import_seconds": 0.2352734860005512,
+  "rss_peak_mib": 321.375
+}

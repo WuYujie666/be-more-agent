@@ -1,0 +1,89 @@
+{
+  "scope": "Live native decisions and actual plan persistence; ordinary extraction not run",
+  "rows": [
+    {
+      "input": "我明天要考试",
+      "answer": "",
+      "expected_date": "2026-10-23",
+      "pending": [],
+      "stored": [],
+      "audit": [],
+      "metrics": {
+        "requests": 1
+      },
+      "seconds": 0.409674423000979
+    },
+    {
+      "input": "我明天要考试",
+      "answer": "",
+      "expected_date": "2026-10-23",
+      "pending": [],
+      "stored": [],
+      "audit": [],
+      "metrics": {
+        "requests": 1
+      },
+      "seconds": 0.04400297599931946
+    },
+    {
+      "input": "我明天要考试",
+      "answer": "",
+      "expected_date": "2026-10-23",
+      "pending": [],
+      "stored": [],
+      "audit": [],
+      "metrics": {
+        "requests": 1
+      },
+      "seconds": 0.041673346000607125
+    },
+    {
+      "input": "明天有一场考试，有点紧张。",
+      "answer": "",
+      "expected_date": "2026-10-23",
+      "pending": [],
+      "stored": [],
+      "audit": [],
+      "metrics": {
+        "requests": 1
+      },
+      "seconds": 0.044602893000046606
+    },
+    {
+      "input": "记一下，我明天要考试。",
+      "answer": "",
+      "expected_date": "2026-10-23",
+      "pending": [],
+      "stored": [],
+      "audit": [],
+      "metrics": {
+        "requests": 1
+      },
+      "seconds": 0.043232944999545
+    },
+    {
+      "input": "如果明天要考试，我可能会紧张。",
+      "answer": "",
+      "expected_date": "2026-10-23",
+      "pending": [],
+      "stored": [],
+      "audit": [],
+      "metrics": {
+        "requests": 1
+      },
+      "seconds": 0.04453248399840959
+    },
+    {
+      "input": "我明天没有考试。",
+      "answer": "",
+      "expected_date": "2026-10-23",
+      "pending": [],
+      "stored": [],
+      "audit": [],
+      "metrics": {
+        "requests": 1
+      },
+      "seconds": 0.04144486099903588
+    }
+  ]
+}

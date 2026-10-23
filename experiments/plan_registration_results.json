@@ -1,0 +1,346 @@
+{
+  "scope": "Live native decisions and actual plan persistence; ordinary extraction not run",
+  "rows": [
+    {
+      "input": "我明天要考试",
+      "answer": "已登记2026-10-23的“考试”，本次会话结束时保存。",
+      "expected_date": "2026-10-23",
+      "pending": [
+        {
+          "kind": "plan",
+          "key": "考试:2026-10-23",
+          "text": "考试",
+          "value": "2026-10-23"
+        }
+      ],
+      "stored": [
+        {
+          "id": "2323f9e6-b9d9-4302-98c7-7f12ff20ba2b",
+          "memory": "考试",
+          "hash": "7746fb87c60704a26000455bef0c736b",
+          "metadata": {
+            "kind": "plan",
+            "key": "考试:2026-10-23",
+            "value": "2026-10-23",
+            "asked": false
+          },
+          "created_at": "2026-10-22T04:44:22.549641+00:00",
+          "updated_at": "2026-10-22T04:44:22.549641+00:00",
+          "user_id": "default",
+          "role": "user"
+        }
+      ],
+      "audit": [
+        {
+          "action": {
+            "operation": "plan",
+            "query": "",
+            "memory_id": "",
+            "text": "考试",
+            "key": "",
+            "value": "",
+            "due_date": "2026-10-23"
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "plan": "考试",
+              "date": "2026-10-23",
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1566,
+            "output": 88,
+            "cached": 512
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "plan",
+                "query": "",
+                "memory_id": "",
+                "text": "考试",
+                "key": "",
+                "value": "",
+                "due_date": "2026-10-23"
+              }
+            ]
+          }
+        ]
+      },
+      "seconds": 1.2273599920008564
+    },
+    {
+      "input": "我明天要考试",
+      "answer": "明天的考试先放一放，现在不用想它。你躺好了吗？身体哪里还紧着？",
+      "expected_date": "2026-10-23",
+      "pending": [],
+      "stored": [],
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1566,
+            "output": 87,
+            "cached": 640
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "明天的考试先放一放，现在不用想它。你躺好了吗？身体哪里还紧着？",
+            "actions": []
+          }
+        ]
+      },
+      "seconds": 0.9640925579988107
+    },
+    {
+      "input": "我明天要考试",
+      "answer": "已登记2026-10-23的“考试”，本次会话结束时保存。",
+      "expected_date": "2026-10-23",
+      "pending": [
+        {
+          "kind": "plan",
+          "key": "考试:2026-10-23",
+          "text": "考试",
+          "value": "2026-10-23"
+        }
+      ],
+      "stored": [
+        {
+          "id": "13fa1faa-9868-4208-b195-f88f8c964f2b",
+          "memory": "考试",
+          "hash": "7746fb87c60704a26000455bef0c736b",
+          "metadata": {
+            "kind": "plan",
+            "key": "考试:2026-10-23",
+            "value": "2026-10-23",
+            "asked": false
+          },
+          "created_at": "2026-10-22T04:44:24.940630+00:00",
+          "updated_at": "2026-10-22T04:44:24.940630+00:00",
+          "user_id": "default",
+          "role": "user"
+        }
+      ],
+      "audit": [
+        {
+          "action": {
+            "operation": "plan",
+            "query": "",
+            "memory_id": "",
+            "text": "考试",
+            "key": "",
+            "value": "",
+            "due_date": "2026-10-23"
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "plan": "考试",
+              "date": "2026-10-23",
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1566,
+            "output": 88,
+            "cached": 640
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "plan",
+                "query": "",
+                "memory_id": "",
+                "text": "考试",
+                "key": "",
+                "value": "",
+                "due_date": "2026-10-23"
+              }
+            ]
+          }
+        ]
+      },
+      "seconds": 0.7845282880007289
+    },
+    {
+      "input": "明天有一场考试，有点紧张。",
+      "answer": "紧张就先放着，不急着赶走它。先跟我说说，现在身体哪里最绷着？",
+      "expected_date": "2026-10-23",
+      "pending": [],
+      "stored": [],
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1569,
+            "output": 85,
+            "cached": 640
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "紧张就先放着，不急着赶走它。先跟我说说，现在身体哪里最绷着？",
+            "actions": []
+          }
+        ]
+      },
+      "seconds": 0.8683880070002488
+    },
+    {
+      "input": "记一下，我明天要考试。",
+      "answer": "已登记2026-10-23的“考试”，本次会话结束时保存。",
+      "expected_date": "2026-10-23",
+      "pending": [
+        {
+          "kind": "plan",
+          "key": "考试:2026-10-23",
+          "text": "考试",
+          "value": "2026-10-23"
+        }
+      ],
+      "stored": [
+        {
+          "id": "7806abbe-0e7c-4d3c-8313-4d3f2a370edf",
+          "memory": "考试",
+          "hash": "7746fb87c60704a26000455bef0c736b",
+          "metadata": {
+            "kind": "plan",
+            "key": "考试:2026-10-23",
+            "value": "2026-10-23",
+            "asked": false
+          },
+          "created_at": "2026-10-22T04:44:27.458271+00:00",
+          "updated_at": "2026-10-22T04:44:27.458271+00:00",
+          "user_id": "default",
+          "role": "user"
+        }
+      ],
+      "audit": [
+        {
+          "action": {
+            "operation": "plan",
+            "query": "",
+            "memory_id": "",
+            "text": "考试",
+            "key": "",
+            "value": "",
+            "due_date": "2026-10-23"
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "plan": "考试",
+              "date": "2026-10-23",
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1569,
+            "output": 88,
+            "cached": 640
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "actions",
+            "reply": "",
+            "actions": [
+              {
+                "operation": "plan",
+                "query": "",
+                "memory_id": "",
+                "text": "考试",
+                "key": "",
+                "value": "",
+                "due_date": "2026-10-23"
+              }
+            ]
+          }
+        ]
+      },
+      "seconds": 1.0260725420012022
+    },
+    {
+      "input": "如果明天要考试，我可能会紧张。",
+      "answer": "只是假设的话，紧张好像已经在心里先走一步了。现在你的身体是什么感觉？",
+      "expected_date": "2026-10-23",
+      "pending": [],
+      "stored": [],
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1570,
+            "output": 83,
+            "cached": 640
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "只是假设的话，紧张好像已经在心里先走一步了。现在你的身体是什么感觉？",
+            "actions": []
+          }
+        ]
+      },
+      "seconds": 1.1708825770001567
+    },
+    {
+      "input": "我明天没有考试。",
+      "answer": "知道啦，明天没有考试，那就安心点。现在身体是松的还是有点紧？",
+      "expected_date": "2026-10-23",
+      "pending": [],
+      "stored": [],
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1566,
+            "output": 83,
+            "cached": 640
+          }
+        ],
+        "decisions": [
+          {
+            "kind": "chat",
+            "reply": "知道啦，明天没有考试，那就安心点。现在身体是松的还是有点紧？",
+            "actions": []
+          }
+        ]
+      },
+      "seconds": 0.9677934449991881
+    }
+  ]
+}

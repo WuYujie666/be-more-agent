@@ -22,6 +22,46 @@
 
 ---
 
+## 调试日志
+
+使用现有 `config.json` 开关：`debug_prompt: true` 打印模型输入、决策、工具
+开始/结果/耗时，并区分自动记忆检索；`whisper_debug` 控制 whisper-cli 诊断。
+在终端正常执行 `bash start_agent.sh` 即可查看。修改配置后重启生效，
+不需要额外 CLI 参数、调试启动器或独立日志窗口。
+
+## Agent 与记忆操作（当前版本）
+
+默认 `config.json` 中的 `agent_backend` 是 `native`：使用现有 OpenAI SDK，
+模型返回结构化决定，程序执行并核对结果。可改为 `langchain` 或 `pydantic`，
+重启生效；后两者先安装 `experiments/requirements-agents.txt`。三者共用业务层，
+不用迁移 Mem0 数据。旧 `legacy` 模式保留作兼容，它不提供这些操作工具。
+
+- 普通记忆支持搜索、纠错和选择遗忘；目标不明确时应追问。
+- “以后回复短一点、少主动问问题”等明确偏好，以及日期明确的计划，在本次采用，
+  会话结束后统一写入 Mem0。到期计划在后续开场关心一次，不等同于闹钟。
+- “今晚音量30%、放10分钟”调整本次助眠播放；只影响白噪音/轻音乐，
+  不调整系统或TTS音量，播放过程中尚不支持语音控制。
+- “本次聊天不要保存”由模型按语义决定是否调用遗忘操作，不使用固定句式匹配。
+  当前遗忘范围是整段尚未保存会话；不支持精确删除其中一句。纠错/删除还会清除
+  当前上下文与摘要，避免旧内容在结束时重新写入；其他长期记录保持不变。
+
+操作确认来自真实执行结果。模型仍可能理解错意图，因此这不是任意自然表述都
+可靠的保证。完整结构化决定校验后才送入TTS，日志中的“首段文本就绪”不等于
+底层首token延迟；TTS分段和合成/播放流水线仍保留。
+
+云端网络阶段超时为12秒，SDK不自动重试；它不是整轮总时限。框架/请求异常会
+回退本地 llama.cpp/Qwen文字回复，已执行操作不重放。本地回退不开放修改工具。
+测试基准禁用回退，避免将Qwen的回复算作被测框架成功。
+
+三方案已完成本机对比，当前建议先用 `native`：功能相同，现阶段没有测出引入
+框架的必要收益。详细数据、失败实验、成本范围和局限见
+[Agent 对比报告](experiments/agent_compare/REPORT.txt)。框架均可在本机运行，
+以后流程变复杂可以继续使用保留的独立适配器。
+
+主要代码：`agent_adapters.py` 管取消与回退，`agent_decisions.py` 管结构化决定与
+执行回执，`agent_backends/` 放三个可替换适配器，`companion_tools.py` 管业务动作，
+`memory_backend.py` 管 Mem0 持久化。最终版本不依赖 LangGraph 状态图。
+
 ## 🧠 工作原理
 
 ### 单轮对话数据流水线
@@ -72,7 +112,7 @@ be-more-agent/
 ├── debug_chat.py            # 文字版对话调试工具（开发机上调 prompt，免硬件）
 ├── test_agent.py            # pytest 单元测试
 ├── config.json              # 用户配置（模型、whisper、VAD、睡前引导话术…）
-├── summaries.json           # 每日一句话摘要存档（运行时生成）
+├── runtime/memory/          # Mem0 事实、偏好与计划（开场和聊天共用）
 ├── requirements.txt         # Python 依赖
 ├── start_agent.sh           # 启动脚本（激活 venv 并运行 agent.py）
 ├── be-more-agent.desktop    # 桌面快捷方式（开机自启场景）
@@ -189,9 +229,8 @@ pytest
 | `max_chat_turns` | 聊满几轮后主动收尾过渡（默认 5） |
 | `default_audio` | 默认助眠音频类型：`white_noise` / `music` |
 | `relaxation_gain` / `relaxation_max_minutes` | 助眠音频音量与最长播放分钟数（到点自动关机） |
-| `summaries_file` / `summary_recent_days` | 每日摘要存档文件与「昨日摘要」有效天数 |
 | `system_prompt` | 机器人人格与睡前引导规则的唯一来源 |
-| `transition_prompt` / `max_turns_prompt` / `decline_audio_prompt` / `goodnight_prompt` / `story_prompt` / `summary_prompt` | 各阶段一次性引导话术 |
+| `transition_prompt` / `max_turns_prompt` / `decline_audio_prompt` / `goodnight_prompt` / `story_prompt` | 各阶段一次性引导话术 |
 | `debug_prompt` | 打开后每次调 LLM 前打印完整 messages，便于调 prompt |
 
 ---
@@ -327,3 +366,69 @@ DeepSeek 请求失败（包括 HTTP 错误、连接/读取超时、空回复、�
 模型；它的超时为30秒。小模型的结构化提取质量和4096 token上下文仍有限，
 过长会话或无效输出可能无法保存，不能保证所有云端失败都能完成记忆写入。
 Ollama 已从项目依赖、运行路径及安装脚本移除；历史实验数据保留。
+
+开场与跨会话连续性：优先关心 Mem0 中日期过去 1～7 天且尚未关心的计划；否则使用普通问候。不推断计划已完成。“少主动提问”时使用普通问候。会话结束只提交 Mem0，不再生成独立开场摘要；旧 summaries.json 留作历史文件，程序不再读取。
+
+### VAD 误触发诊断
+
+默认开启 `vad_diagnostics_enabled`，每次完成 VAD 录音后，在相对运行目录的
+`diagnostics/vad/` 保存一对同名 `.wav` 和 `.json`。WAV 与送入 ASR 的音频一致；
+JSON 在 ASR 完成后补上 `asr_text`，异常时记录 `asr_error`。文件名时间为 UTC。
+程序无法自动判断是否误触发，因此正常说话和疑似误触发都会保存，便于对照回听。
+
+JSON 包含 `duration_ms`、`vad_speech_ms`、`vad_speech_ratio`、`rms_dbfs`、
+逐帧 `speech` / `rms_dbfs` / `peak_dbfs`、停止原因、采样率、VAD 配置和输入溢出次数。
+`noise_floor_dbfs` 是触发前最近最多约 5 秒的 VAD 非语音帧 RMS 中位数，
+没有这种帧时为 null；`speech_above_noise_db` 是语音帧音量中位数与该估计值之差，
+不是经过校准的真实信噪比。VAD 标记本身可能出错，需结合 WAV 判断。
+
+`config.json` 可覆盖：`vad_diagnostics_enabled`（默认 true）、
+`vad_diagnostics_dir`（默认 `diagnostics/vad`）、
+`vad_diagnostics_max_captures`（默认 100，至少保留 1 次）。
+每次保存后自动清理最旧样本及其 JSON。默认目录已被 Git 忽略，内容包含本地录音和识别文本。
+发现误触发时，按终端 `[VAD DIAG]` 路径找到对应文件；需要长期保留的样本请复制到其他目录。
+诊断保存失败仅打印日志，不中断原有识别流程。
+
+计划在会话结束的 Mem0 写入队列中统一提取，不依赖聊天模型当场调用 plan。提取以用户发言时间解释相对日期，综合改期、取消和不保存要求；结构校验失败最多纠正重试一次。普通事实继续走 Mem0 原有提取，并排除计划，避免两个来源同时维护计划。相比原流程，结束整理通常增加一次模型请求；不是数据库事务，部分步骤失败会报告未完整保存。
+
+### 正式 VAD 后端
+
+默认使用本机 CPU 上的 Silero ONNX，`config.json` 中设置：
+
+```json
+{
+  "vad_backend": "silero",
+  "silero_vad_model": "models/silero-vad/silero_vad.onnx",
+  "silero_vad_threshold": 0.5
+}
+```
+
+首次安装运行 `venv/bin/python setup_vad.py`（`setup.sh` 也会调用）。
+下载会检查已验证模型的 SHA-256；模型缺失时启动会明确报错，不会悄悄切回其他检测器。
+运行时不联网下载模型。模型会话复用，每轮监听重置状态；16kHz 输入按 512 个采样点
+（32ms）处理，非 16kHz 输入先进行抗混叠重采样。
+`vad_start_ms=150` 对应连续 5 帧（160ms）；`vad_silence_ms=900` 对应 29 帧（928ms）。
+前置缓冲至少覆盖启动确认窗口，以保留短回应开头。诊断 JSON 记录后端、阈值及逐帧
+`speech_probability`。需要对照旧后端时把 `vad_backend` 改为 `webrtc` 并重启。
+
+验证：`venv/bin/python -m unittest test_vad_backend test_vad_diagnostics -v`。
+本地录音回归用例需要保留 `diagnostics/vad/` 中本次采集的两段样本；没有样本时跳过。
+此阶段仍是轮流收听与说话；Silero 本身不提供外放回声消除或语音打断。
+
+### 语音打断（快速版）
+
+`voice_interrupt_enabled` 默认 true。独立模块 `voice_interrupt.py` 使用持续全双工
+音频流：实际播放参考 → SpeexDSP 基础回声消除 → Silero → 录音队列。
+普通收听仍按 `vad_start_ms` 启动；回复期间使用 `barge_in_threshold=0.7` 和
+`barge_in_start_ms=256` 确认用户开口，然后停止旧播放、清空待播队列。
+合成中的旧音频带轮次编号，完成后也不会混入新回复。打断录音保留前置缓冲，
+说完后走原来的 ASR 和对话逻辑。开场问候也支持打断；助眠音频阶段维持原来的停止监听行为。
+
+此版本依赖系统 `libspeexdsp1`（已加入 setup.sh），默认输入输出设备均使用 48kHz，
+需要设备支持同时录放。`aec_reference_delay_ms=10` 是参考信号额外提前量，
+基础 AEC 的实际表现受音量、设备延迟和摆放影响，仍需真人同时说话验证。
+诊断 WAV 是回声处理后的、实际送给 ASR 的音频。
+
+关闭打断并回到轮流录放：在 `config.json` 设置 `"voice_interrupt_enabled": false` 后重启。
+语音调试启动：`venv/bin/python -u debug_voice.py`，保留麦克风/TTS，动画窗口最小化。
+验证：`venv/bin/python -m unittest test_voice_interrupt test_vad_backend test_vad_diagnostics -v`。

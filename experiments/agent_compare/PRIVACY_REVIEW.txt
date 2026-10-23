@@ -1,0 +1,33 @@
+2026-10-22: User review of privacy handling
+
+Removed CompanionTools.preflight and the shared runtime's phrase-matching shortcut.
+The shortcut only covered fixed wording and masked missing model tool calls.
+The actual forget_recent business operation remains available to all adapters.
+
+Historical results are preserved, but live-*-recheck.json and offline benchmark
+results obtained with preflight enabled do NOT demonstrate semantic recognition
+or reliable model tool selection for forget_recent. Do not use them as evidence
+that this issue is resolved. Other scenarios retain their original test scope.
+
+Current regression: test_agent_runtime (4 tests) passes after removal; privacy
+request now reaches the adapter and causes no action without an actual tool call.
+This test verifies removal, not end-to-end semantic reliability.
+
+Research direction (not implemented): require a structured semantic decision
+(chat / clarify / action), validate action arguments and target scope, execute
+through application code, and gate action acknowledgements on execution receipts.
+Required tool choice constrains output type, not semantic correctness. Strict
+schema validates structure, not successful execution. No operation acknowledgement
+should be streamed to TTS before its execution result is verified.
+Use paraphrases, negation, quotations, hypothetical statements, mixed intents,
+ambiguous scope, tool failures and ordinary chat for the next evaluation.
+
+Sources:
+https://api-docs.deepseek.com/api/create-chat-completion/
+https://api-docs.deepseek.com/guides/tool_calls/
+https://docs.langchain.com/oss/python/langchain/structured-output
+https://pydantic.dev/docs/ai/core-concepts/output/
+
+Follow-up: structured-decision-v1 is now implemented. See REPORT.txt and
+live-*-decision.json for current evidence and remaining semantic limitations.
+The fixed-phrase shortcut remains deleted. Historical files are not current results.

@@ -285,3 +285,19 @@ streams, partial-output continuation, cancellation and failure of both backends.
 Project Ollama dependency/backend/install steps removed; historical results kept.
 System-wide Ollama uninstall remains pending: root-owned install requires sudo
 password unavailable to this session. No system install files were removed.
+
+2026-10-22: completed agent adapter comparison (structured-decision-v1)
+Current evidence: agent_compare/REPORT.txt and summary-decision.json.
+Native / LangChain / Pydantic AI share the same semantic decision and executor.
+All 3 passed 11 live state-check cases and 55 deterministic protocol cases each.
+No phrase-matching privacy shortcut remains; historical shortcut-based successes
+are not semantic evidence. Mutation acknowledgements come from real receipts.
+Warm isolated chat medians: 14.69 / 23.55 / 25.44 ms; process RSS 93.45 / 133.47 /
+117.17 MiB. Real first synthesized audio after ASR, two runs: native3.71/2.56s,
+LC3.00/2.15s, Pyd2.72/2.72s. Too few and different replies to rank cloud speed.
+Default native: current workflow doesn't demonstrate enough framework benefit
+for extra dependencies; both optional adapters retained in independent files.
+Complete decision buffering trades earlier streaming for validation before speech.
+29 unit regressions, 15 real storage checks, 32 segmentation checks passed;
+actual local Qwen fallback worked with new native adapter (14.22s, no tool writes).
+See REPORT.txt for privacy scope, false-classification risks and test limitations.

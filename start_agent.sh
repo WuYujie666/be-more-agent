@@ -5,4 +5,4 @@ BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$BASE_DIR"
 
 source venv/bin/activate
-exec python agent.py
+exec python -u agent.py

@@ -1,0 +1,10 @@
+{
+  "test_chinese_tts_filter_bug": "passed",
+  "test_speak_clean_keeps_chinese_punct": "passed",
+  "test_whisper_config_defaults": "passed",
+  "test_action_json_parse": "passed",
+  "test_detect_audio_type": "passed",
+  "test_detect_sleep_intent": "passed",
+  "test_detect_yes_no": "passed",
+  "test_extract_audio_tag": "AssertionError"
+}

@@ -1,0 +1,372 @@
+{
+  "backend": "native",
+  "live": true,
+  "rows": [
+    {
+      "case": "chat",
+      "trial": 0,
+      "text": "累了就先别急着想别的，我在这儿陪你歇一会儿。",
+      "first_text_seconds": 1.065389550999953,
+      "total_seconds": 1.218977802000154,
+      "passed": true,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1154,
+            "output": 13,
+            "cached": 0
+          }
+        ]
+      }
+    },
+    {
+      "case": "preference",
+      "trial": 0,
+      "text": "好的，我尽量简短，也少问你。今晚早点歇着。",
+      "first_text_seconds": 1.9687869459999092,
+      "total_seconds": 2.0763201509998908,
+      "passed": true,
+      "audit": [
+        {
+          "action": {
+            "operation": "preference",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "reply_length",
+            "value": "short",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "reply_length": "short"
+              },
+              "save_at_session_end": true
+            }
+          }
+        },
+        {
+          "action": {
+            "operation": "preference",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "questions",
+            "value": "fewer",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "questions": "fewer"
+              },
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 1154,
+            "output": 135,
+            "cached": 0
+          },
+          {
+            "input": 1361,
+            "output": 15,
+            "cached": 1152
+          }
+        ]
+      }
+    },
+    {
+      "case": "settings",
+      "trial": 0,
+      "text": "好，今晚音量调到30%，播10分钟。你想听白噪音还是轻音乐？",
+      "first_text_seconds": 1.7955848290002905,
+      "total_seconds": 1.9302017859999978,
+      "passed": true,
+      "audit": [
+        {
+          "action": {
+            "operation": "settings",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "volume",
+            "value": "0.3",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "volume": 0.3
+              },
+              "save_at_session_end": false
+            }
+          }
+        },
+        {
+          "action": {
+            "operation": "settings",
+            "query": "",
+            "memory_id": "",
+            "text": "",
+            "key": "minutes",
+            "value": "10",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "applied": {
+                "minutes": 10.0
+              },
+              "save_at_session_end": false
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 1156,
+            "output": 133,
+            "cached": 0
+          },
+          {
+            "input": 1363,
+            "output": 19,
+            "cached": 1152
+          }
+        ]
+      }
+    },
+    {
+      "case": "plan",
+      "trial": 0,
+      "text": "记下了，明天有项目答辩。现在先不操心它，愿意跟我说说此刻身体和心里的感觉吗？",
+      "first_text_seconds": 1.8376807390000067,
+      "total_seconds": 1.9766066209999735,
+      "passed": true,
+      "audit": [
+        {
+          "action": {
+            "operation": "plan",
+            "query": "",
+            "memory_id": "",
+            "text": "项目答辩",
+            "key": "",
+            "value": "",
+            "due_date": "2026-10-23"
+          },
+          "response": {
+            "ok": true,
+            "result": {
+              "plan": "项目答辩",
+              "date": "2026-10-23",
+              "save_at_session_end": true
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 1154,
+            "output": 77,
+            "cached": 0
+          },
+          {
+            "input": 1276,
+            "output": 24,
+            "cached": 1024
+          }
+        ]
+      }
+    },
+    {
+      "case": "revise",
+      "trial": 0,
+      "text": "改好了，你现在住在上海。夜深了，还有别的心事想放下吗？",
+      "first_text_seconds": 2.5732226200002515,
+      "total_seconds": 2.803861882000092,
+      "passed": true,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "住址 北京 居住城市",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": [
+              {
+                "id": "7810ca6c-fc7f-493f-9900-ce6bdcb1f640",
+                "text": "用户现在住在北京。",
+                "metadata": null
+              }
+            ]
+          }
+        },
+        {
+          "action": {
+            "operation": "revise",
+            "query": "",
+            "memory_id": "7810ca6c-fc7f-493f-9900-ce6bdcb1f640",
+            "text": "用户现在住在上海。",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": "对应记录已修改"
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 3,
+        "usage": [
+          {
+            "input": 1160,
+            "output": 60,
+            "cached": 0
+          },
+          {
+            "input": 1284,
+            "output": 97,
+            "cached": 1024
+          },
+          {
+            "input": 1407,
+            "output": 18,
+            "cached": 1152
+          }
+        ]
+      }
+    },
+    {
+      "case": "forget",
+      "trial": 0,
+      "text": "我先帮你找一下相关的记忆。我找到一条：“用户现在住在北京。” 确认要删掉这条吗？",
+      "first_text_seconds": 1.2376797779998014,
+      "total_seconds": 2.1555269729997235,
+      "passed": false,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "用户居住的城市",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": [
+              {
+                "id": "349cfad5-229d-428c-b59b-3f06711c7a6c",
+                "text": "用户现在住在北京。",
+                "metadata": null
+              }
+            ]
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 1151,
+            "output": 62,
+            "cached": 0
+          },
+          {
+            "input": 1277,
+            "output": 17,
+            "cached": 1024
+          }
+        ]
+      }
+    },
+    {
+      "case": "ambiguous",
+      "trial": 0,
+      "text": "我这边没找到具体是哪件事，你说的是哪一条呢？告诉我，我帮你删掉。",
+      "first_text_seconds": 1.3109041329998945,
+      "total_seconds": 1.5268969080002535,
+      "passed": true,
+      "audit": [
+        {
+          "action": {
+            "operation": "search",
+            "query": "那件事",
+            "memory_id": "",
+            "text": "",
+            "key": "",
+            "value": "",
+            "due_date": ""
+          },
+          "response": {
+            "ok": true,
+            "result": []
+          }
+        }
+      ],
+      "metrics": {
+        "requests": 2,
+        "usage": [
+          {
+            "input": 1148,
+            "output": 55,
+            "cached": 0
+          },
+          {
+            "input": 1224,
+            "output": 21,
+            "cached": 1024
+          }
+        ]
+      }
+    },
+    {
+      "case": "recent",
+      "trial": 0,
+      "text": "好，刚才聊的这些不会存进记忆里。现在想轻轻说点什么，还是就这么安静待一会儿？",
+      "first_text_seconds": 0.4349669600001107,
+      "total_seconds": 0.7053921740002806,
+      "passed": false,
+      "audit": [],
+      "metrics": {
+        "requests": 1,
+        "usage": [
+          {
+            "input": 1152,
+            "output": 23,
+            "cached": 0
+          }
+        ]
+      }
+    }
+  ],
+  "import_seconds": 0.24752697300027648,
+  "rss_peak_mib": 305.21875
+}

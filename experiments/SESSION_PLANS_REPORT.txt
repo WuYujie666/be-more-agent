@@ -1,0 +1,16 @@
+2026-10-22 会话结束计划整理
+
+原问题：聊天模型对“我明天要考试”三次仅两次调用 plan，带情绪的一次未登记。
+变更：撤除聊天时的 plan 工具；同一 Mem0 串行写入任务先提取并校验计划变更，再让 Mem0 提取非计划事实。每条用户消息记录北京时间；模型 API 请求仍只发送合法 role/content 字段。
+计划支持新增、已有记录改期、取消（保留状态）、遗忘（删除记录及对应历史）。不猜测日期或已完成状态。
+增加一次后台整理模型调用，结构错误最多再重试一次。并非单次模型调用或原子事务；计划写入后普通事实保存失败时会报错，但计划可能已经落库。
+
+验证：
+- test_session_plans + test_memory + test_memory_greeting + test_agent_decisions + test_agent_runtime + test_llm_fallback：41项通过。
+- experiments/session_plan_results.json：12/12真实模型＋隔离Mem0测试通过，包含原句重复、情绪表达、假设、否定、改期、当场取消、不保存、跨午夜、已有计划取消/改期/遗忘。
+- experiments/session_plan_end_to_end_results.json：真实 ChatEngine 结束提交、普通饮食事实和考试计划同时保存、关闭重建服务后模拟到期后一天开场关心均通过。
+- 正式用户记忆未改动；测试不播放音频、不启动GUI。
+
+失败记录：首轮在“本次计划取消”时模型输出取消但没有已有ID；调整为未保存计划取消直接无操作。第二轮出现同一计划重复变更，被校验阻止；增加一次带错误说明的纠正重试。初始不完整结果保留于 session_plan_initial_partial.json 和 session_plan_retry_partial.json。
+
+限制：小样本通过不是所有表达可靠的保证；语义误判仍可能发生。复杂多计划指代、长会话以及API失败后的恢复需继续验证。已有普通文字记忆不会自动迁移成结构化计划。

@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "age_-1_days": true,
+    "age_0_days": true,
+    "age_1_days": true,
+    "age_1_once": true,
+    "age_7_days": true,
+    "age_7_once": true,
+    "age_8_days": true,
+    "restart_plan_opening": true,
+    "restart_not_repeated": true,
+    "deleted_plan_not_recalled": true
+  },
+  "passed": 10,
+  "total": 10,
+  "greetings": [
+    "晚上好。你之前提到“项目答辩”，现在想聊聊这件事吗？",
+    "晚上好。今天有什么想分享的吗？",
+    "晚上好。今天有什么想分享的吗？"
+  ],
+  "cloud_calls": 0
+}

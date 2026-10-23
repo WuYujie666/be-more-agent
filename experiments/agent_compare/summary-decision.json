@@ -1,0 +1,53 @@
+{
+  "protocol": "structured-decision-v1",
+  "backends": {
+    "native": {
+      "offline_passed": 55,
+      "offline_total": 55,
+      "warm_chat_ms": 14.686549499856483,
+      "warm_two_settings_ms": 23.666636499910965,
+      "resident_mib": 93.453125,
+      "cold_first_call_seconds": 0.8991690859993469,
+      "live_passed": 11,
+      "live_total": 11,
+      "voice_first_audio_after_asr_seconds": [
+        3.7107471780000196,
+        2.5629486800007726
+      ]
+    },
+    "langchain": {
+      "offline_passed": 55,
+      "offline_total": 55,
+      "warm_chat_ms": 23.55378699985522,
+      "warm_two_settings_ms": 21.518406500490528,
+      "resident_mib": 133.46875,
+      "cold_first_call_seconds": 1.6714786200000162,
+      "live_passed": 11,
+      "live_total": 11,
+      "voice_first_audio_after_asr_seconds": [
+        2.995300096000392,
+        2.1543906079996304
+      ]
+    },
+    "pydantic": {
+      "offline_passed": 55,
+      "offline_total": 55,
+      "warm_chat_ms": 25.43731950026995,
+      "warm_two_settings_ms": 32.445441499930894,
+      "resident_mib": 117.171875,
+      "cold_first_call_seconds": 1.3496952599998622,
+      "live_passed": 11,
+      "live_total": 11,
+      "voice_first_audio_after_asr_seconds": [
+        2.719696506999753,
+        2.7203096740004185
+      ]
+    }
+  },
+  "usage_current_protocol_pilot_and_voice": {
+    "input": 61636,
+    "output": 3967,
+    "cached": 19968
+  },
+  "reserved_budget_cny_historical_and_current": 1.990726
+}

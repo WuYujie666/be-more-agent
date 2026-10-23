@@ -27,6 +27,11 @@ class FlashMemoryLLM(DeepSeekLLM):
 
     def generate_response(self, *args, **kwargs):
         from llm_backend import ensure_server
+        from companion_tools import time_context
+        if args:
+            args = ([time_context()] + list(args[0]),) + args[1:]
+        elif 'messages' in kwargs:
+            kwargs['messages'] = [time_context()] + list(kwargs['messages'])
         kwargs['extra_body'] = {'thinking': {'type': 'disabled'}}
         try:
             result = super().generate_response(*args, **kwargs)

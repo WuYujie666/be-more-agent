@@ -1,0 +1,158 @@
+[
+  {
+    "backend": "native",
+    "trial": 0,
+    "transcript": "我是说今天我吃了饭，我吃了那个一份米线，一份蛋羹，一份西红柿炒鸡蛋，一份嗯西兰花。最后呢，我觉得这个点的太多了，然后吃的太饱了，然后我就回寝室了，没有吃完，然后呢浪费了一些食物。",
+    "answer": "吃得很丰富呀，只是最后撑到有点可惜。现在躺下后，肚子还觉得胀吗？",
+    "asr_seconds": 2.889460696000242,
+    "first_audio_after_asr_seconds": 3.7107471780000196,
+    "first_audio_from_file_seconds": 6.600207874000262,
+    "metrics": {
+      "requests": 1,
+      "usage": [
+        {
+          "input": 1488,
+          "output": 87,
+          "cached": 512
+        }
+      ],
+      "decisions": [
+        {
+          "kind": "chat",
+          "reply": "吃得很丰富呀，只是最后撑到有点可惜。现在躺下后，肚子还觉得胀吗？",
+          "actions": []
+        }
+      ]
+    }
+  },
+  {
+    "backend": "langchain",
+    "trial": 0,
+    "transcript": "我是说今天我吃了饭，我吃了那个一份米线，一份蛋羹，一份西红柿炒鸡蛋，一份嗯西兰花。最后呢，我觉得这个点的太多了，然后吃的太饱了，然后我就回寝室了，没有吃完，然后呢浪费了一些食物。",
+    "answer": "吃得挺丰盛，饱到吃不完，有点可惜，不过也说明你吃得满足了。现在胃里还胀胀的吗？",
+    "asr_seconds": 2.5678673739994338,
+    "first_audio_after_asr_seconds": 2.995300096000392,
+    "first_audio_from_file_seconds": 5.563167469999826,
+    "metrics": {
+      "requests": 1,
+      "usage": [
+        {
+          "input": 1384,
+          "output": 91,
+          "cached": 512
+        }
+      ],
+      "decisions": [
+        {
+          "kind": "chat",
+          "reply": "吃得挺丰盛，饱到吃不完，有点可惜，不过也说明你吃得满足了。现在胃里还胀胀的吗？",
+          "actions": []
+        }
+      ]
+    }
+  },
+  {
+    "backend": "pydantic",
+    "trial": 0,
+    "transcript": "我是说今天我吃了饭，我吃了那个一份米线，一份蛋羹，一份西红柿炒鸡蛋，一份嗯西兰花。最后呢，我觉得这个点的太多了，然后吃的太饱了，然后我就回寝室了，没有吃完，然后呢浪费了一些食物。",
+    "answer": "吃得很满足，就是点多了些，没吃完有点可惜。现在躺下了吗，肚子还觉得胀不胀？",
+    "asr_seconds": 2.6073024120005357,
+    "first_audio_after_asr_seconds": 2.719696506999753,
+    "first_audio_from_file_seconds": 5.326998919000289,
+    "metrics": {
+      "requests": 1,
+      "usage": [
+        {
+          "input": 1407,
+          "output": 89,
+          "cached": 0
+        }
+      ],
+      "decisions": [
+        {
+          "kind": "chat",
+          "reply": "吃得很满足，就是点多了些，没吃完有点可惜。现在躺下了吗，肚子还觉得胀不胀？",
+          "actions": []
+        }
+      ]
+    }
+  },
+  {
+    "backend": "pydantic",
+    "trial": 1,
+    "transcript": "我是说今天我吃了饭，我吃了那个一份米线，一份蛋羹，一份西红柿炒鸡蛋，一份嗯西兰花。最后呢，我觉得这个点的太多了，然后吃的太饱了，然后我就回寝室了，没有吃完，然后呢浪费了一些食物。",
+    "answer": "吃得挺丰盛的，最后撑到了也挺正常，剩下一点别太放在心上。现在胃里还觉得胀吗？",
+    "asr_seconds": 2.593258674000026,
+    "first_audio_after_asr_seconds": 2.7203096740004185,
+    "first_audio_from_file_seconds": 5.3135683480004445,
+    "metrics": {
+      "requests": 1,
+      "usage": [
+        {
+          "input": 1407,
+          "output": 88,
+          "cached": 0
+        }
+      ],
+      "decisions": [
+        {
+          "kind": "chat",
+          "reply": "吃得挺丰盛的，最后撑到了也挺正常，剩下一点别太放在心上。现在胃里还觉得胀吗？",
+          "actions": []
+        }
+      ]
+    }
+  },
+  {
+    "backend": "langchain",
+    "trial": 1,
+    "transcript": "我是说今天我吃了饭，我吃了那个一份米线，一份蛋羹，一份西红柿炒鸡蛋，一份嗯西兰花。最后呢，我觉得这个点的太多了，然后吃的太饱了，然后我就回寝室了，没有吃完，然后呢浪费了一些食物。",
+    "answer": "吃得饱饱的，还吃到有点撑，是那种又满足又有点懊恼的感觉吧。现在躺下了，肚子还觉得胀吗？",
+    "asr_seconds": 2.718537835999996,
+    "first_audio_after_asr_seconds": 2.1543906079996304,
+    "first_audio_from_file_seconds": 4.872928443999626,
+    "metrics": {
+      "requests": 1,
+      "usage": [
+        {
+          "input": 1384,
+          "output": 94,
+          "cached": 512
+        }
+      ],
+      "decisions": [
+        {
+          "kind": "chat",
+          "reply": "吃得饱饱的，还吃到有点撑，是那种又满足又有点懊恼的感觉吧。现在躺下了，肚子还觉得胀吗？",
+          "actions": []
+        }
+      ]
+    }
+  },
+  {
+    "backend": "native",
+    "trial": 1,
+    "transcript": "我是说今天我吃了饭，我吃了那个一份米线，一份蛋羹，一份西红柿炒鸡蛋，一份嗯西兰花。最后呢，我觉得这个点的太多了，然后吃的太饱了，然后我就回寝室了，没有吃完，然后呢浪费了一些食物。",
+    "answer": "吃得有点撑，还浪费了一些，心里是不是有点小小的过意不去？这会儿躺下来，肚子还胀着吗？",
+    "asr_seconds": 2.491816146999554,
+    "first_audio_after_asr_seconds": 2.5629486800007726,
+    "first_audio_from_file_seconds": 5.0547648270003265,
+    "metrics": {
+      "requests": 1,
+      "usage": [
+        {
+          "input": 1488,
+          "output": 90,
+          "cached": 512
+        }
+      ],
+      "decisions": [
+        {
+          "kind": "chat",
+          "reply": "吃得有点撑，还浪费了一些，心里是不是有点小小的过意不去？这会儿躺下来，肚子还胀着吗？",
+          "actions": []
+        }
+      ]
+    }
+  }
+]

@@ -8,7 +8,7 @@ import agent
 agent.CURRENT_CONFIG["long_term_memory"] = False
 from chat_engine import ChatEngine
 completed=[]
-ChatEngine.finalize_session_summary=lambda self:None
+ChatEngine.finalize_session_memory=lambda self:None
 # No saved personal summary in cloud smoke-test context.
 def greeting(self):
  text='晚上好。';self.session_memory.append({'role':'assistant','content':text});return text,False

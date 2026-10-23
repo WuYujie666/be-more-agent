@@ -45,11 +45,13 @@ from functools import partial
 import sounddevice as sd
 import numpy as np
 import scipy.signal
-import webrtcvad
+import math
+from vad_backend import create_vad
 
 # --- AI ENGINES ---
 import llm_backend as llm
 import asr_backend
+from vad_diagnostics import VadDiagnostics
 
 # =========================================================================
 # 1. 配置 / 提示词从内部模块导入
@@ -135,6 +137,9 @@ class BotGUI:
         self.current_frame_index = 0
 
         self.interrupted = threading.Event()
+        self.reply_id = 0
+        self.reply_busy = threading.Event()
+        self.voice_input = None
 
         # 对话核心（记忆 / 睡前引导状态机 / LLM 流式回复 / 每日摘要）全部在
         # ChatEngine 里，与硬件无关；GUI 通过 GuiIO 适配器把显示/TTS/播放接进去。
@@ -464,9 +469,12 @@ class BotGUI:
             except: pass
 
         self.tts_active.clear()
+        self.interrupted.set()
+        if self.voice_input is not None:
+            self.voice_input.close()
 
         # 退出时把今天对话压成一句话摘要存档（幂等；不保留原始转录）
-        self.engine.finalize_session_summary()
+        self.engine.finalize_session_memory()
         self.engine.close()
 
         try:
@@ -506,19 +514,23 @@ class BotGUI:
             pass
 
     def handle_speaking_interrupt(self, event=None):
-        """Space 打断：思考/发言时立即清空两条队列、停掉播放，回到 IDLE。"""
-        if self.current_state == BotStates.SPEAKING or self.current_state == BotStates.THINKING:
+        """Keyboard and voice share cancellation; generations reject late TTS."""
+        if self.reply_busy.is_set() or self.current_state in (BotStates.SPEAKING, BotStates.THINKING):
             self.interrupted.set()
+            self.reply_id += 1
             with self.tts_queue_lock:
                 self.tts_queue.clear()
             with self.audio_queue_lock:
                 self.audio_queue.clear()
+            if self.voice_input is not None:
+                self.voice_input.stop_playback()
+            else:
+                sd.stop()
             if self.current_audio_process:
                 try: self.current_audio_process.terminate()
-                except: pass
-            try: sd.stop()
-            except: pass
-            self.set_state(BotStates.IDLE, "Interrupted.")
+                except Exception: pass
+            # Voice callback is a worker: schedule GUI access on Tk's thread.
+            self.master.after(0, lambda: self.set_state(BotStates.LISTENING, "我在听…"))
 
     def load_animations(self):
         """从 faces/<状态>/ 预加载各状态的 PNG 帧序列；缺帧时回退到 idle 或纯色占位。"""
@@ -760,7 +772,15 @@ class BotGUI:
         整个循环包在 try 里，任何未预料异常都转成 ERROR 状态而非让线程静默崩掉。"""
         try:
             self.play_startup_sound()
-            self.warm_up_logic()
+            if CURRENT_CONFIG.get('voice_interrupt_enabled', True):
+                from voice_interrupt import VoiceInterrupt
+                self.voice_input = VoiceInterrupt(CURRENT_CONFIG, self.handle_speaking_interrupt, self.reply_busy.is_set)
+                self.voice_input.start()
+            self.reply_busy.set()
+            try:
+                self.warm_up_logic()
+            finally:
+                self.reply_busy.clear()
             self.synth_thread = threading.Thread(target=self._synth_worker, daemon=True)
             self.synth_thread.start()
             self.play_thread = threading.Thread(target=self._play_worker, daemon=True)
@@ -776,32 +796,49 @@ class BotGUI:
                     continue
 
                 self.set_state(BotStates.LISTENING, "我在听…")
-                audio_file = self.record_voice_vad()
-
-                if self.interrupted.is_set():
-                    self.interrupted.clear()
-                    self.set_state(BotStates.IDLE, "Resetting...")
-                    continue
-
+                if self.voice_input is not None:
+                    utterance = self.voice_input.receive()
+                    if utterance is None:
+                        break
+                    audio_file = utterance.path
+                    diagnostics = utterance.diagnostics
+                    self.response_speech_end = utterance.speech_end
+                    self.response_recording_end = utterance.recording_end
+                else:
+                    audio_file = self.record_voice_vad()
+                    diagnostics = self.vad_diagnostics
                 if not audio_file:
-                    # 没听到，安静地继续监听（不报错停顿，符合助眠场景）
                     continue
 
-                user_text = self.transcribe_audio(audio_file)
-                if not user_text or not any(char.isalnum() for char in user_text):
-                    # Noise can produce punctuation-only ASR output; do not
-                    # display it as speech or spend a conversation turn on it.
-                    self.set_state(BotStates.IDLE, "No speech text.")
-                    continue
-
-                self.add_message("user", user_text)
                 self.interrupted.clear()
-                with timed_block("完整一轮对话"):
-                    self.engine.handle_turn(user_text)
+                self.reply_busy.set()
+                generation = self.reply_id
+                try:
+                    try:
+                        user_text = self.transcribe_audio(audio_file)
+                    except Exception as exc:
+                        diagnostics.finish_asr(error=str(exc))
+                        raise
+                    diagnostics.finish_asr(text=user_text)
+                    if generation != self.reply_id or self.interrupted.is_set():
+                        continue
+                    if not user_text or not any(char.isalnum() for char in user_text):
+                        self.set_state(BotStates.IDLE, "No speech text.")
+                        continue
+                    self.add_message("user", user_text)
+                    with timed_block("完整一轮对话"):
+                        self.engine.handle_turn(user_text)
+                finally:
+                    self.reply_busy.clear()
+                    if self.voice_input is not None:
+                        try: os.unlink(audio_file)
+                        except FileNotFoundError: pass
 
         except Exception as e:
             traceback.print_exc()
             self.set_state(BotStates.IDLE, f"Fatal Error: {str(e)[:40]}")
+            if self.voice_input is not None:
+                self.voice_input.close()
 
     def warm_up_logic(self):
         """开机预热：先空跑一次 LLM 摊销首轮延迟，再播放开场问候（顺带预热 TTS）。"""
@@ -825,33 +862,33 @@ class BotGUI:
             print(f"Failed to load {TEXT_MODEL}: {e}", flush=True)
 
         # 开场问候（载入每日摘要、拼成可念出的句子、存入会话记忆）统一在 engine 里。
-        greeting, has_summary = self.engine.build_greeting()
-        self._stage("问候阶段" + ("（带昨日摘要）" if has_summary else "（无摘要）"))
+        greeting, has_memory = self.engine.build_greeting()
+        self._stage("问候阶段" + ("（Mem0 近期记忆）" if has_memory else "（普通问候）"))
         self.set_state(BotStates.GREETING, "晚上好")
         self.speak(greeting)
         print("Models loaded.", flush=True)
 
     def record_voice_vad(self, filename="input.wav"):
-        """webrtcvad 持续监听，检测到人声起始自动开始录音，尾部静音自动停止。
+        """配置的 VAD 持续监听，检测到人声起始自动开始录音，尾部静音自动停止。
         阻塞直到捕获完整一句话，返回 wav 路径；没听到则返回 None。"""
         self.response_speech_end = None
         self.response_recording_end = None
         last_voice_at = None
         VAD_RATE = 16000
-        FRAME_MS = 30
-        frame_samples = int(VAD_RATE * FRAME_MS / 1000)  # 16000Hz×30ms = 480
-
-        aggressiveness = int(CURRENT_CONFIG.get("vad_aggressiveness", 2))
-        start_frames   = max(1, int(CURRENT_CONFIG.get("vad_start_ms", 150)   / FRAME_MS))
-        silence_frames = max(1, int(CURRENT_CONFIG.get("vad_silence_ms", 900) / FRAME_MS))
-        max_frames     = max(1, int(CURRENT_CONFIG.get("vad_max_record_ms", 30000) / FRAME_MS))
-        preroll_frames = max(0, int(CURRENT_CONFIG.get("vad_preroll_ms", 300) / FRAME_MS))
+        vad = create_vad(CURRENT_CONFIG)
+        FRAME_MS = vad.frame_ms
+        frame_samples = vad.frame_samples
+        start_frames   = max(1, math.ceil(CURRENT_CONFIG.get("vad_start_ms", 150)   / FRAME_MS))
+        silence_frames = max(1, math.ceil(CURRENT_CONFIG.get("vad_silence_ms", 900) / FRAME_MS))
+        max_frames     = max(1, math.ceil(CURRENT_CONFIG.get("vad_max_record_ms", 30000) / FRAME_MS))
+        preroll_frames = max(start_frames, math.ceil(CURRENT_CONFIG.get("vad_preroll_ms", 300) / FRAME_MS))
         skip_frames    = int(200 / FRAME_MS)  # 丢弃头部 ~200ms，避开上一句 TTS 的房间回声尾巴
 
-        vad = webrtcvad.Vad(aggressiveness)
+        self.vad_diagnostics = VadDiagnostics(CURRENT_CONFIG, preroll_frames, FRAME_MS)
+        diagnostics = self.vad_diagnostics
+        stop_reason = "unknown"
 
-        # webrtcvad 只吃 8/16/32/48kHz。优先 16000Hz 直采；设备只能跑 44100/48000 时
-        # 按原生率采集，再用最近邻重采样把每帧降到 480 个样本。
+        # 优先 16kHz；原生采样率不同则抗混叠重采样到 VAD 帧长。
         input_rate = choose_input_samplerate(INPUT_DEVICE_NAME, VAD_RATE)
         use_resampling = (input_rate != VAD_RATE)
         read_size = int(input_rate * FRAME_MS / 1000) if use_resampling else frame_samples
@@ -869,7 +906,7 @@ class BotGUI:
             time.sleep(0.2)
             with sd.InputStream(samplerate=input_rate, channels=1, dtype='int16',
                                 blocksize=read_size, device=INPUT_DEVICE_NAME) as stream:
-                print("[VAD] Listening...", flush=True)
+                print(f"[VAD] Listening ({CURRENT_CONFIG.get('vad_backend', 'silero')}, {FRAME_MS}ms)...", flush=True)
                 while True:
                     if self.exiting:
                         return None
@@ -880,17 +917,17 @@ class BotGUI:
                         frame = frame.flatten()
 
                     if use_resampling:
-                        step = len(frame) / frame_samples
-                        idx = np.arange(0, len(frame), step)[:frame_samples].astype(int)
-                        frame = frame[idx]
-                    if len(frame) != frame_samples:   # webrtcvad 要求帧长精确，长度不对就跳过
+                        resampled = scipy.signal.resample_poly(frame.astype(np.float32), VAD_RATE, input_rate)
+                        frame = np.clip(np.rint(resampled[:frame_samples]), -32768, 32767).astype(np.int16)
+                    if len(frame) != frame_samples:   # 检测器要求固定帧长
                         continue
 
                     if skip_frames > 0:
                         skip_frames -= 1
                         continue
 
-                    is_speech = vad.is_speech(frame.tobytes(), VAD_RATE)
+                    is_speech = vad.is_speech(frame)
+                    diagnostics.observe(frame, is_speech, recording, _overflow, probability=vad.probability)
                     if is_speech:
                         last_voice_at = time.perf_counter()
 
@@ -900,6 +937,7 @@ class BotGUI:
                             voiced_run += 1
                             if voiced_run >= start_frames:
                                 recording = True
+                                diagnostics.trigger()
                                 buffer.extend(preroll)   # 预缓冲并入开头，避免吞掉第一个字
                                 preroll.clear()
                                 total_frames = len(buffer)
@@ -915,9 +953,11 @@ class BotGUI:
                         else:
                             silence_run += 1
                             if silence_run >= silence_frames:
+                                stop_reason = "trailing_silence"
                                 print("[VAD] Trailing silence, stop.", flush=True)
                                 break
                         if total_frames >= max_frames:
+                            stop_reason = "max_duration"
                             print("[VAD] Max record time reached, stop.", flush=True)
                             break
         except Exception as e:
@@ -928,7 +968,10 @@ class BotGUI:
             return None
         self.response_speech_end = last_voice_at
         self.response_recording_end = time.perf_counter()
-        return self.save_audio_buffer(buffer, filename, samplerate=VAD_RATE, already_int16=True)
+        audio_file = self.save_audio_buffer(buffer, filename, samplerate=VAD_RATE, already_int16=True)
+        if audio_file:
+            diagnostics.save(audio_file, input_rate, stop_reason)
+        return audio_file
 
     def save_audio_buffer(self, buffer, filename, samplerate=16000, already_int16=False):
         if not buffer: return None
@@ -1012,9 +1055,9 @@ class BotGUI:
     def _queue_sentence(self, sentence):
         """把一句完整文本推进 TTS 队列（过滤掉没有可读字符的空句）。"""
         s = sentence.strip()
-        if s and re.search(r'[\w一-鿿]', s):
+        if s and not self.interrupted.is_set() and re.search(r'[\w一-鿿]', s):
             with self.tts_queue_lock:
-                self.tts_queue.append(s)
+                self.tts_queue.append((self.reply_id, s))
 
     def wait_for_tts(self):
         # 两级都空闲才算"说完"：两个队列空，且合成/播放线程都不忙。
@@ -1026,26 +1069,26 @@ class BotGUI:
     def _synth_worker(self):
         # 阶段一：从 tts_queue 取文本，提前合成成音频缓冲，推入 audio_queue。
         # 这样第 N 句播放期间第 N+1 句已在合成，句间空挡被消除。
-        while True:
+        while not self.exiting:
             text = None
             with self.tts_queue_lock:
                 if self.tts_queue:
                     self.synth_active.set()   # 先置忙再出队，避免 wait_for_tts 抢到"空队列+未置忙"
-                    text = self.tts_queue.pop(0)
+                    generation, text = self.tts_queue.pop(0)
             if text is None:
                 time.sleep(0.05)
                 continue
             try:
-                if self.interrupted.is_set():
+                if self.interrupted.is_set() or generation != self.reply_id:
                     continue
                 rendered = self._render(text)        # (samples, rate) 或 None
-                if rendered is None or self.interrupted.is_set():
+                if rendered is None or self.interrupted.is_set() or generation != self.reply_id:
                     continue
                 # 背压：audio_queue 满则等播放线程消化，避免提前渲染堆积过多。
-                while not self.interrupted.is_set():
+                while not self.interrupted.is_set() and generation == self.reply_id and not self.exiting:
                     with self.audio_queue_lock:
                         if len(self.audio_queue) < self.audio_queue_max:
-                            self.audio_queue.append(rendered)
+                            self.audio_queue.append((generation, rendered))
                             break
                     time.sleep(0.02)
             finally:
@@ -1053,18 +1096,18 @@ class BotGUI:
 
     def _play_worker(self):
         # 阶段二：从 audio_queue 取已渲染音频并播放。
-        while True:
+        while not self.exiting:
             item = None
             with self.audio_queue_lock:
                 if self.audio_queue:
                     self.play_active.set()    # 先置忙再出队，理由同上
-                    item = self.audio_queue.pop(0)
+                    generation, item = self.audio_queue.pop(0)
             if item is None:
                 time.sleep(0.05)
                 continue
             try:
-                if not self.interrupted.is_set():
-                    self._play_samples(*item)
+                if not self.interrupted.is_set() and generation == self.reply_id:
+                    self._play_samples(*item, generation=generation)
             finally:
                 self.play_active.clear()
 
@@ -1116,6 +1159,12 @@ class BotGUI:
         return self._render_piper(clean)
 
     def _fit_samplerate(self, samples, rate):
+        # The duplex stream already owns the device; do not open a probe stream.
+        if self.voice_input is not None:
+            target_rate = self.voice_input.rate
+            if rate != target_rate:
+                samples = scipy.signal.resample_poly(samples, target_rate, rate).astype(np.float32)
+            return samples, target_rate
         # 设备支持模型原生采样率就直接用；否则用多相重采样（比 FFT 法 resample 快很多）。
         try:
             sd.check_output_settings(samplerate=rate)
@@ -1186,9 +1235,17 @@ class BotGUI:
         except Exception as e:
             print(f"[STARTUP SOUND] 播放失败 {path}: {e}", flush=True)
 
-    def _play_samples(self, samples, rate):
+    def _play_samples(self, samples, rate, generation=None):
+        gain = float(self.engine.playback_setting("speech_volume", CURRENT_CONFIG.get("speech_gain", 1.0)))
+        samples = (samples * max(0.0, min(1.0, gain))).astype(np.float32)
+        if generation is None:
+            generation = self.reply_id
         with timed_block(f"TTS play [{rate}Hz {len(samples)}smp]"):
             try:
+                if self.voice_input is not None:
+                    self.voice_input.play(samples, rate, lambda: self.exiting or self.interrupted.is_set() or generation != self.reply_id)
+                    self.voice_input.save_trace()
+                    return
                 sd.play(samples, rate)
                 if self.response_speech_end is not None:
                     playback_started = time.perf_counter()
@@ -1225,6 +1282,10 @@ class BotGUI:
     def start_relaxation_audio(self):
         """加载并播放一条助眠音频（白噪音/轻音乐），做音量平衡；
         音频自然放完或满 relaxation_max_minutes 分钟后自动关机。"""
+        if self.interrupted.is_set():
+            return
+        if self.voice_input is not None:
+            self.voice_input.close()
         path = self._pick_relaxation_file()
         if not path:
             self._stage(f"助眠音频决定：类型={self.engine.audio_type}，但未找到对应音频文件")
@@ -1239,7 +1300,7 @@ class BotGUI:
             print(f"[RELAX] 读取音频失败 {path}: {e}", flush=True)
             self.safe_exit()
             return
-        gain = float(CURRENT_CONFIG.get("relaxation_gain", 0.6))
+        gain = float(self.engine.playback_setting("volume", CURRENT_CONFIG.get("relaxation_gain", 0.6)))
         samples = (samples * gain).astype(np.float32)
         samples, rate = self._fit_samplerate(samples, rate)
         self.set_state(BotStates.SLEEP, "晚安，好梦")
@@ -1268,7 +1329,7 @@ class BotGUI:
 
     def _relaxation_watchdog(self, samples, rate, path):
         """后台播放助眠音频并看门：到时间上限或自然放完即停止并关机。"""
-        max_minutes = float(CURRENT_CONFIG.get("relaxation_max_minutes", 45))
+        max_minutes = float(self.engine.playback_setting("minutes", CURRENT_CONFIG.get("relaxation_max_minutes", 45)))
         deadline = time.time() + max_minutes * 60
         print(f"[RELAX] 播放 {path}，上限 {max_minutes} 分钟。", flush=True)
         try:

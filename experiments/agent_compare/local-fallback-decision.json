@@ -1,0 +1,8 @@
+{
+  "protocol": "structured-decision-v1",
+  "backend": "native",
+  "injected": "cloud ReadTimeout",
+  "local_reply": "晚安！祝您有一个美好的夜晚。如果您有任何需要帮助的事情，随时可以告诉我。",
+  "seconds": 14.218627999999626,
+  "tool_actions": []
+}

@@ -1,7 +1,7 @@
 # =========================================================================
 #  Be More Agent · 对话引擎（无硬件依赖）
 # =========================================================================
-"""睡前陪伴的对话核心：多轮状态机 + LLM 流式回复 + 每日摘要。
+"""睡前陪伴的对话核心：多轮状态机 + LLM 流式回复 + 会话记忆。
 
 本模块刻意不 import tkinter / sounddevice / webrtcvad / PIL / sherpa，
 通过 llm_backend 和 config 调用模型，因此可在任意开发机上跑（不需要麦克风/扬声器/
@@ -20,11 +20,11 @@ prompt 拼装、标签剥离、状态机出现两份实现而漂移。
     play_relaxation_audio(type)  进入助眠音频播放阶段
 """
 
+from config import debug_log
 import re
 import time
 import threading
 import uuid
-from pathlib import Path
 
 from memory_backend import MemoryService, memory_context
 
@@ -34,7 +34,7 @@ from config import (
     CURRENT_CONFIG, LLM_OPTIONS, TEXT_MODEL, BotStates, SYSTEM_PROMPT,
     detect_audio_request, detect_story_intent, extract_audio_tag,
     match_audio_word, match_sleep_word, match_yesno_word,
-    append_summary, load_recent_summary, AUDIO_TYPE_LABELS,
+    AUDIO_TYPE_LABELS,
 )
 
 
@@ -56,8 +56,7 @@ class ChatEngine:
         self.memory = None
         self.memory_enabled = CURRENT_CONFIG.get('long_term_memory', False)
         self.session_id = uuid.uuid4().hex
-        self._summary_lock = threading.Lock()
-        self._memory_generation = 0
+        self._memory_lock = threading.Lock()
         self._memory_submitted = False
         if self.memory_enabled:
             try:
@@ -68,7 +67,7 @@ class ChatEngine:
         # --- 对话记忆 ---
         self.permanent_memory = self.load_chat_history()
         self.session_memory = []
-        self.chat_user_texts = []   # 仅 CHAT 阶段的用户发言，供每日摘要取材
+        self.chat_user_texts = []   # 仅 CHAT 阶段的用户发言，供会话记忆取材
 
         # --- 睡前引导状态机 ---
         # phase: "chat"（聊天中）/ "ask_audio"（已问是否助眠，等是/否）/ "playing"（放助眠音频）
@@ -76,8 +75,18 @@ class ChatEngine:
         self.turn_count = 0          # CHAT 阶段用户发言计数
         self.audio_type = CURRENT_CONFIG.get("default_audio", "white_noise")
         self.max_chat_turns = int(CURRENT_CONFIG.get("max_chat_turns", 5))
-        self.summary_saved = False   # 每日摘要幂等保护
-        self.summary_thread = None   # 异步摘要线程句柄，供调用方需要时 join
+        self.agent_backend = CURRENT_CONFIG.get('agent_backend', 'legacy')
+        self.tools = None
+        if self.agent_backend != 'legacy':
+            from companion_tools import CompanionTools
+            self.tools = CompanionTools(self.memory, settings={
+                                        'volume': CURRENT_CONFIG.get('relaxation_gain', .6),
+                                        'minutes': CURRENT_CONFIG.get('relaxation_max_minutes', 45),
+                                        'audio_type': CURRENT_CONFIG.get('default_audio', 'white_noise'),
+                                        'speech_volume': CURRENT_CONFIG.get('speech_gain', 1.0)}, on_edit=self._after_memory_edit,
+                                        cancelled=self.io.is_interrupted)
+        self._scrub_after_turn = False
+        self.memory_thread = None   # 异步摘要线程句柄，供调用方需要时 join
 
     # =========================================================================
     #  状态机分派
@@ -95,6 +104,12 @@ class ChatEngine:
     def handle_chat_turn(self, user_text):
         """CHAT 阶段一轮：更新轮次与音频类型，判断是否进入收尾过渡，再生成回复。
         触发过渡的条件：用户说了想睡/想结束的关键词，或聊满 max_chat_turns 轮。"""
+        if self.tools:
+            try:
+                self.tools.profile()
+            except Exception as exc:
+                print(f'[TOOLS] load failed ({type(exc).__name__})', flush=True)
+            self.audio_type = self.tools.settings.get('audio_type', self.audio_type)
         self.turn_count += 1
         self.chat_user_texts.append(user_text)   # 只记 CHAT 阶段用户发言，供摘要取材
         self.io.stage(f"第 {self.turn_count} 轮对话：{user_text}")
@@ -102,6 +117,8 @@ class ChatEngine:
         t, audio_word = match_audio_word(user_text)
         if t:
             self.audio_type = t
+            if self.tools:
+                self.tools.settings['audio_type'] = t
             self.io.stage(f"检测到助眠类型关键词「{audio_word}」→ {t}")
 
         sleep_word = match_sleep_word(user_text)
@@ -131,7 +148,7 @@ class ChatEngine:
                 "不要再询问白噪音还是轻音乐，不要出主意、不要解决问题。"
             )
         elif turns_reached: #达到最大轮数后：先生成回复 -> 再 summary -> 再 play white_noise
-            self.audio_type = CURRENT_CONFIG.get("default_audio", "white_noise")
+            self.audio_type = self.tools.settings.get("audio_type", CURRENT_CONFIG.get("default_audio", "white_noise")) if self.tools else CURRENT_CONFIG.get("default_audio", "white_noise")
             audio_label = AUDIO_TYPE_LABELS.get(self.audio_type, "默认助眠声音")
             self.io.stage(f"已聊满 {self.max_chat_turns} 轮，默认播放{audio_label}")
             base_extra = CURRENT_CONFIG.get(
@@ -154,9 +171,13 @@ class ChatEngine:
             extra = CURRENT_CONFIG.get("story_prompt", "")
 
         self.chat_and_respond(user_text, extra_instruction=extra)
+        if self.io.is_interrupted():
+            return
 
+        if self.tools:
+            self.audio_type = self.tools.settings.get('audio_type', self.audio_type)
         if direct_audio_request or (transition and (audio_requested or turns_reached)):
-            self.start_session_summary()
+            self.start_session_memory()
             self.phase = "playing"
             self.io.play_relaxation_audio(self.audio_type)
         elif transition:
@@ -169,6 +190,8 @@ class ChatEngine:
         t, audio_word = match_audio_word(user_text)
         if t:
             self.audio_type = t
+            if self.tools:
+                self.tools.settings['audio_type'] = t
             self.io.stage(f"检测到助眠类型关键词「{audio_word}」→ {t}")
 
         decision, yesno_word = match_yesno_word(user_text)
@@ -181,8 +204,10 @@ class ChatEngine:
             extra = CURRENT_CONFIG.get("goodnight_prompt", "")
 
         self.chat_and_respond(user_text, extra_instruction=extra)
+        if self.io.is_interrupted():
+            return
 
-        self.start_session_summary()   # 异步压缩今日对话，不阻塞助眠
+        self.start_session_memory()   # 异步保存会话记忆，不阻塞助眠
         self.phase = "playing"
         self.io.play_relaxation_audio(self.audio_type)
 
@@ -209,11 +234,16 @@ class ChatEngine:
         # 本轮发给 LLM 的 user 消息带上临时的系统/语言提示；但存入历史的只放干净
         # 原文，避免「过渡/收尾」这类一次性指令污染后续轮次的上下文。
         call_user_msg = {"role": "user", "content": "\n".join(parts)}
-        context = memory_context(self.memory.search(text)) if self.memory else None
+        context = None
+        if self.memory:
+            debug_log('[MEMORY] 自动检索（本轮识别文本；非模型工具调用）')
+            context = memory_context(self.memory.search(text))
         messages = self.permanent_memory + ([context] if context else []) + self.session_memory + [call_user_msg]
+        messages = [{k: v for k, v in m.items() if k in ('role', 'content')} for m in messages]
         _dump_messages(messages)
         # 用户原文进会话记忆，保证后续轮次 LLM 能看到完整的多轮历史（不只是机器人自己说过的话）。
-        self.session_memory.append({"role": "user", "content": text})
+        from companion_tools import now
+        self.session_memory.append({"role": "user", "content": text, "observed_at": now().isoformat()})
 
         full_raw = ""          # LLM 原始输出（含标签），用于最终解析与记忆
         pending = ""           # 显示缓冲：拦住可能跨 chunk 的 [AUDIO:x] 标签
@@ -274,7 +304,11 @@ class ChatEngine:
 
         stream = None
         try:
-            stream = llm.chat(model=TEXT_MODEL, messages=messages, stream=True, options=LLM_OPTIONS)
+            if getattr(self, 'agent_backend', 'legacy') == 'legacy':
+                stream = llm.chat(model=TEXT_MODEL, messages=messages, stream=True, options=LLM_OPTIONS)
+            else:
+                from agent_adapters import stream as agent_stream
+                stream = agent_stream(messages, self.tools, self.agent_backend)
 
             _t_llm = time.perf_counter()
             _ttft_logged = False
@@ -283,12 +317,16 @@ class ChatEngine:
                 if self.io.is_interrupted(): break
                 content = chunk['message']['content']
                 if not _ttft_logged:
-                    print(f"[TIMER] LLM 首Token延迟 {time.perf_counter()-_t_llm:.2f}s", flush=True)
+                    label = "首Token延迟" if getattr(self, "agent_backend", "legacy") == "legacy" else "首段文本就绪"
+                    print(f"[TIMER] LLM {label} {time.perf_counter()-_t_llm:.2f}s", flush=True)
                     _ttft_logged = True
                 full_raw += content
                 pending += content
                 drain()
 
+            if self.io.is_interrupted():
+                # Do not flush an unfinished sentence or run end-of-turn actions.
+                return ""
             drain(final=True)
             if sentence_buffer.strip():
                 self.io.speak(sentence_buffer)
@@ -297,7 +335,12 @@ class ChatEngine:
             clean_full = clean_full.strip()
             if tag_type:
                 self.audio_type = tag_type
-            self.session_memory.append({"role": "assistant", "content": clean_full})
+            if getattr(self, '_scrub_after_turn', False):
+                self.session_memory.clear()
+                self.chat_user_texts.clear()
+                self._scrub_after_turn = False
+            else:
+                self.session_memory.append({"role": "assistant", "content": clean_full})
 
             self.io.wait_speech()
             self.io.set_state(BotStates.IDLE, "Ready")
@@ -313,8 +356,19 @@ class ChatEngine:
                 stream.close()
 
     # =========================================================================
-    #  每日摘要
+    #  会话记忆
     # =========================================================================
+
+    def _after_memory_edit(self):
+        # Prevent forgotten/corrected text re-entering extraction via this session or future extraction.
+        with self._memory_lock:
+            self.session_memory.clear()
+            self.chat_user_texts.clear()
+            self._scrub_after_turn = True
+            self._memory_submitted = False
+
+    def playback_setting(self, key, default):
+        return self.tools.settings.get(key, default) if self.tools else default
 
     def _handle_forget(self, text):
         command = re.sub(r'[\s，。！？,.!?]', '', text).lower()
@@ -323,19 +377,18 @@ class ChatEngine:
             return False
         self.io.set_state(BotStates.THINKING, 'Clearing memory...')
         try:
-            with self._summary_lock:
+            with self._memory_lock:
                 if self.memory:
                     # Ordered after all accepted session writes; exclude a new
                     # submission until the in-memory session is cleared too.
                     self.memory.submit('clear').result(timeout=65)
                 elif self.memory_enabled:
                     raise RuntimeError('Long-term store unavailable')
-                self._memory_generation += 1
-                Path(CURRENT_CONFIG.get('summaries_file', 'summaries.json')).unlink(missing_ok=True)
+                if getattr(self, 'tools', None):
+                    self.tools.discard()
                 self.session_memory = []
                 self.chat_user_texts = []
                 self.permanent_memory = self.load_chat_history()
-                self.summary_saved = False
                 self._memory_submitted = False
             message = '好的，已清空保存的记忆和这次对话的上下文。'
         except Exception as exc:
@@ -354,8 +407,8 @@ class ChatEngine:
             self.memory.close()
 
     def finalize_session_memory(self):
-        """Submit the complete session once, independently of greeting summary success."""
-        with self._summary_lock:
+        """Submit the complete session once, without a second summary write."""
+        with self._memory_lock:
             if self._memory_submitted or not self.memory:
                 return
             # Exclude the opening greeting before the first user message.
@@ -363,6 +416,8 @@ class ChatEngine:
             for message in self.session_memory:
                 if message['role'] == 'user' or messages:
                     messages.append(dict(message))
+            if getattr(self, 'tools', None):
+                self.tools.commit()
             if not messages:
                 return
             self._memory_submitted = True
@@ -370,58 +425,28 @@ class ChatEngine:
             # request must be ordered after this accepted write.
             self.memory.remember_session(messages, self.session_id)
 
-    def start_session_summary(self):
-        """后台线程把今天对话压成一句话摘要，不阻塞助眠流程。
-        线程句柄存到 self.summary_thread，便于调试工具等它跑完再退出。"""
-        self.summary_thread = threading.Thread(target=self.finalize_session_summary, daemon=True)
-        self.summary_thread.start()
-
-    def finalize_session_summary(self):
-        """把今日对话压成一句话摘要并存档（幂等）。原始转录不保留。"""
-        self.finalize_session_memory()
-        with self._summary_lock:
-            if self.summary_saved:
-                return
-            self.summary_saved = True
-            generation = self._memory_generation
-            texts = [t for t in self.chat_user_texts if t.strip()]
-        if not texts:
-            return
-        transcript = "\n".join(f"用户第{i}句：{t}" for i, t in enumerate(texts, start=1))
-        summary_prompt = CURRENT_CONFIG.get("summary_prompt", "")
-        try:
-            messages = [{"role": "user", "content": summary_prompt + "\n" + transcript}]
-            _dump_messages(messages)
-            summary_options = LLM_OPTIONS.copy()
-            summary_options.update({"temperature": 0.2, "top_p": 0.8, "num_predict": 80})
-            resp = llm.chat(
-                model=TEXT_MODEL,
-                messages=messages,
-                stream=False, options=summary_options,
-            )
-            summary, _ = extract_audio_tag(resp["message"]["content"])
-            summary = summary.strip().replace("\n", " ")
-            summary = re.sub(r"^(摘要|总结|记忆|输出)[:：]\s*", "", summary).strip()
-            summary = summary.strip("「」“”\"' ")
-            if summary:
-                with self._summary_lock:
-                    if generation == self._memory_generation:
-                        append_summary(summary)
-                        print(f"[SUMMARY] saved: {summary}", flush=True)
-        except Exception as e:
-            # 生成失败就不存摘要：下次开场自然退回"晚上好。今天有什么想分享的吗？"
-            print(f"[SUMMARY] generate failed: {e}", flush=True)
+    def start_session_memory(self):
+        """Persist once in the background without delaying relaxation playback."""
+        self.memory_thread = threading.Thread(target=self.finalize_session_memory, daemon=True)
+        self.memory_thread.start()
 
     def load_chat_history(self):
-        """跨会话不再回灌原始转录；仅以系统 prompt 起步，连续性靠每日摘要。"""
+        """跨会话不再回灌原始转录；仅以系统 prompt 起步，连续性靠会话记忆。"""
         return [{"role": "system", "content": SYSTEM_PROMPT}]
 
     def build_greeting(self):
-        """开场问候。摘要本身已是一整句开场白（晚上好…昨天…今天有什么想分享的吗），
-        有摘要就直接念，不再二次包裹；无摘要时退回写死的默认问候。
-        问候作为 assistant 消息存入会话记忆，让后续对话上下文连贯。
-        返回 (greeting, has_summary)，调用方负责念出/打印。"""
-        summary = load_recent_summary()
-        greeting = summary if summary else "晚上好。今天有什么想分享的吗？"
-        self.session_memory.append({"role": "assistant", "content": greeting})
-        return greeting, bool(summary)
+        """Read the same Mem0 store used in chat; never load the legacy summary."""
+        greeting = '晚上好。今天有什么想分享的吗？'
+        has_memory = False
+        try:
+            if self.memory:
+                from companion_tools import now
+                current = now()
+                plan = self.memory.submit('followup', today=current.date().isoformat()).result(15)
+                if plan:
+                    greeting = f'晚上好。你之前提到“{plan}”，现在想聊聊这件事吗？'
+                    has_memory = True
+        except Exception as exc:
+            print(f'[MEMORY] greeting unavailable ({type(exc).__name__}); using default', flush=True)
+        self.session_memory.append({'role': 'assistant', 'content': greeting})
+        return greeting, has_memory

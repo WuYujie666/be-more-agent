@@ -1,0 +1,434 @@
+{
+  "backend": "native",
+  "scope": "3 synthetic Chinese sessions, actual extraction, fresh-process recall; not official LongMemEval",
+  "phases": [
+    {
+      "phase": "write",
+      "backend": "native",
+      "checks": {
+        "nonempty_extraction": true
+      },
+      "rows": [
+        {
+          "input": [
+            [
+              "user",
+              "我叫林晓。我喜欢西红柿鸡蛋面，不喜欢香菜。"
+            ],
+            [
+              "assistant",
+              "知道了，我会结合你的喜好聊天。"
+            ]
+          ],
+          "result": {
+            "results": [
+              {
+                "id": "2f4faf04-87e0-412f-a27c-284f07793e43",
+                "memory": "用户叫林晓。",
+                "event": "ADD"
+              },
+              {
+                "id": "5cafd498-d053-46b3-b227-b190e121270a",
+                "memory": "林晓喜欢西红柿鸡蛋面。",
+                "event": "ADD"
+              },
+              {
+                "id": "5df5d964-b150-4b4b-ad14-98ae54189a83",
+                "memory": "林晓不喜欢香菜。",
+                "event": "ADD"
+              }
+            ]
+          },
+          "seconds": 1.692744156000117
+        },
+        {
+          "input": [
+            [
+              "user",
+              "我目前住在苏州，养了一只叫豆包的猫。"
+            ],
+            [
+              "assistant",
+              "你住苏州，猫叫豆包。"
+            ]
+          ],
+          "result": {
+            "results": [
+              {
+                "id": "a1b2643c-e0de-4bf7-9daa-1ff779a74b57",
+                "memory": "林晓目前住在苏州。",
+                "event": "ADD"
+              },
+              {
+                "id": "227a5c86-83ae-42c1-9185-948df0d34231",
+                "memory": "林晓养了一只猫，名叫豆包。",
+                "event": "ADD"
+              }
+            ]
+          },
+          "seconds": 1.255721714000174
+        },
+        {
+          "input": [
+            [
+              "user",
+              "我之前提到的猫豆包，今年四岁了。"
+            ],
+            [
+              "assistant",
+              "豆包四岁了。"
+            ]
+          ],
+          "result": {
+            "results": [
+              {
+                "id": "ca5e74e8-8f19-46f1-960f-d6e7de6a25af",
+                "memory": "林晓的猫豆包今年四岁（截至2026年10月）。",
+                "event": "ADD"
+              }
+            ]
+          },
+          "seconds": 0.852545313000519
+        }
+      ],
+      "records": [
+        {
+          "id": "227a5c86-83ae-42c1-9185-948df0d34231",
+          "memory": "林晓养了一只猫，名叫豆包。",
+          "hash": "72ed222b7ed3762340d021d506729dd1",
+          "metadata": {
+            "session_id": "stability-1",
+            "source": "user_transcript",
+            "observed_at": "2026-10-22T12:01:00.950534+08:00"
+          },
+          "created_at": "2026-10-22T04:01:02.171049+00:00",
+          "updated_at": "2026-10-22T04:01:02.171049+00:00",
+          "user_id": "default",
+          "attributed_to": "user"
+        },
+        {
+          "id": "2f4faf04-87e0-412f-a27c-284f07793e43",
+          "memory": "用户叫林晓。",
+          "hash": "bceeb312a466f050689d5fc608b4cfda",
+          "metadata": {
+            "session_id": "stability-0",
+            "source": "user_transcript",
+            "observed_at": "2026-10-22T12:00:59.258012+08:00"
+          },
+          "created_at": "2026-10-22T04:01:00.898015+00:00",
+          "updated_at": "2026-10-22T04:01:00.898015+00:00",
+          "user_id": "default",
+          "attributed_to": "user"
+        },
+        {
+          "id": "5cafd498-d053-46b3-b227-b190e121270a",
+          "memory": "林晓喜欢西红柿鸡蛋面。",
+          "hash": "cef47a5a6e9522ea58df4cdc1b17e2ed",
+          "metadata": {
+            "session_id": "stability-0",
+            "source": "user_transcript",
+            "observed_at": "2026-10-22T12:00:59.258012+08:00"
+          },
+          "created_at": "2026-10-22T04:01:00.898092+00:00",
+          "updated_at": "2026-10-22T04:01:00.898092+00:00",
+          "user_id": "default",
+          "attributed_to": "user"
+        },
+        {
+          "id": "5df5d964-b150-4b4b-ad14-98ae54189a83",
+          "memory": "林晓不喜欢香菜。",
+          "hash": "d06e73699e188d8c0a9d2e580cba29d5",
+          "metadata": {
+            "session_id": "stability-0",
+            "source": "user_transcript",
+            "observed_at": "2026-10-22T12:00:59.258012+08:00"
+          },
+          "created_at": "2026-10-22T04:01:00.898119+00:00",
+          "updated_at": "2026-10-22T04:01:00.898119+00:00",
+          "user_id": "default",
+          "attributed_to": "user"
+        },
+        {
+          "id": "a1b2643c-e0de-4bf7-9daa-1ff779a74b57",
+          "memory": "林晓目前住在苏州。",
+          "hash": "fe5f39e09bbd95a99aad13a401e8f28b",
+          "metadata": {
+            "session_id": "stability-1",
+            "source": "user_transcript",
+            "observed_at": "2026-10-22T12:01:00.950534+08:00"
+          },
+          "created_at": "2026-10-22T04:01:02.171013+00:00",
+          "updated_at": "2026-10-22T04:01:02.171013+00:00",
+          "user_id": "default",
+          "attributed_to": "user"
+        },
+        {
+          "id": "ca5e74e8-8f19-46f1-960f-d6e7de6a25af",
+          "memory": "林晓的猫豆包今年四岁（截至2026年10月）。",
+          "hash": "320469a6b25c2561e9edf773b467f9a3",
+          "metadata": {
+            "session_id": "stability-2",
+            "source": "user_transcript",
+            "observed_at": "2026-10-22T12:01:02.206228+08:00"
+          },
+          "created_at": "2026-10-22T04:01:03.031381+00:00",
+          "updated_at": "2026-10-22T04:01:03.031381+00:00",
+          "user_id": "default",
+          "attributed_to": "user"
+        }
+      ]
+    },
+    {
+      "phase": "read",
+      "backend": "native",
+      "checks": {
+        "preference": true,
+        "negative_preference": true,
+        "cross_session": true,
+        "residence": true,
+        "abstention": false
+      },
+      "rows": [
+        {
+          "case": "preference",
+          "question": "我喜欢吃什么面？",
+          "retrieved": [
+            {
+              "id": "5cafd498-d053-46b3-b227-b190e121270a",
+              "memory": "林晓喜欢西红柿鸡蛋面。",
+              "hash": "cef47a5a6e9522ea58df4cdc1b17e2ed",
+              "metadata": {
+                "session_id": "stability-0",
+                "source": "user_transcript",
+                "observed_at": "2026-10-22T12:00:59.258012+08:00"
+              },
+              "score": 0.5927698245915778,
+              "created_at": "2026-10-22T04:01:00.898092+00:00",
+              "updated_at": "2026-10-22T04:01:00.898092+00:00",
+              "user_id": "default",
+              "attributed_to": "user"
+            }
+          ],
+          "answer": "你爱吃西红柿鸡蛋面，记得呢。",
+          "passed": true,
+          "seconds": 1.3578356210000493,
+          "metrics": {
+            "requests": 1,
+            "usage": [
+              {
+                "input": 1566,
+                "output": 72,
+                "cached": 512
+              }
+            ],
+            "decisions": [
+              {
+                "kind": "chat",
+                "reply": "你爱吃西红柿鸡蛋面，记得呢。",
+                "actions": []
+              }
+            ]
+          }
+        },
+        {
+          "case": "negative_preference",
+          "question": "我不喜欢吃哪种配菜？",
+          "retrieved": [
+            {
+              "id": "5df5d964-b150-4b4b-ad14-98ae54189a83",
+              "memory": "林晓不喜欢香菜。",
+              "hash": "d06e73699e188d8c0a9d2e580cba29d5",
+              "metadata": {
+                "session_id": "stability-0",
+                "source": "user_transcript",
+                "observed_at": "2026-10-22T12:00:59.258012+08:00"
+              },
+              "score": 0.6345166774555253,
+              "created_at": "2026-10-22T04:01:00.898119+00:00",
+              "updated_at": "2026-10-22T04:01:00.898119+00:00",
+              "user_id": "default",
+              "attributed_to": "user"
+            },
+            {
+              "id": "5cafd498-d053-46b3-b227-b190e121270a",
+              "memory": "林晓喜欢西红柿鸡蛋面。",
+              "hash": "cef47a5a6e9522ea58df4cdc1b17e2ed",
+              "metadata": {
+                "session_id": "stability-0",
+                "source": "user_transcript",
+                "observed_at": "2026-10-22T12:00:59.258012+08:00"
+              },
+              "score": 0.4603693433058683,
+              "created_at": "2026-10-22T04:01:00.898092+00:00",
+              "updated_at": "2026-10-22T04:01:00.898092+00:00",
+              "user_id": "default",
+              "attributed_to": "user"
+            }
+          ],
+          "answer": "是香菜，你说过不喜欢吃香菜。睡前想点轻松的事吧。",
+          "passed": true,
+          "seconds": 1.3781649240008846,
+          "metrics": {
+            "requests": 1,
+            "usage": [
+              {
+                "input": 1604,
+                "output": 79,
+                "cached": 640
+              }
+            ],
+            "decisions": [
+              {
+                "kind": "chat",
+                "reply": "是香菜，你说过不喜欢吃香菜。睡前想点轻松的事吧。",
+                "actions": []
+              }
+            ]
+          }
+        },
+        {
+          "case": "cross_session",
+          "question": "我养的宠物叫什么，今年几岁？",
+          "retrieved": [
+            {
+              "id": "227a5c86-83ae-42c1-9185-948df0d34231",
+              "memory": "林晓养了一只猫，名叫豆包。",
+              "hash": "72ed222b7ed3762340d021d506729dd1",
+              "metadata": {
+                "session_id": "stability-1",
+                "source": "user_transcript",
+                "observed_at": "2026-10-22T12:01:00.950534+08:00"
+              },
+              "score": 0.4985648482443729,
+              "created_at": "2026-10-22T04:01:02.171049+00:00",
+              "updated_at": "2026-10-22T04:01:02.171049+00:00",
+              "user_id": "default",
+              "attributed_to": "user"
+            },
+            {
+              "id": "ca5e74e8-8f19-46f1-960f-d6e7de6a25af",
+              "memory": "林晓的猫豆包今年四岁（截至2026年10月）。",
+              "hash": "320469a6b25c2561e9edf773b467f9a3",
+              "metadata": {
+                "session_id": "stability-2",
+                "source": "user_transcript",
+                "observed_at": "2026-10-22T12:01:02.206228+08:00"
+              },
+              "score": 0.4931032793966668,
+              "created_at": "2026-10-22T04:01:03.031381+00:00",
+              "updated_at": "2026-10-22T04:01:03.031381+00:00",
+              "user_id": "default",
+              "attributed_to": "user"
+            }
+          ],
+          "answer": "你养的猫叫豆包，到今年十月是四岁啦。",
+          "passed": true,
+          "seconds": 1.1869056499999715,
+          "metrics": {
+            "requests": 1,
+            "usage": [
+              {
+                "input": 1622,
+                "output": 78,
+                "cached": 640
+              }
+            ],
+            "decisions": [
+              {
+                "kind": "chat",
+                "reply": "你养的猫叫豆包，到今年十月是四岁啦。",
+                "actions": []
+              }
+            ]
+          }
+        },
+        {
+          "case": "residence",
+          "question": "我住在哪个城市？",
+          "retrieved": [
+            {
+              "id": "a1b2643c-e0de-4bf7-9daa-1ff779a74b57",
+              "memory": "林晓目前住在苏州。",
+              "hash": "fe5f39e09bbd95a99aad13a401e8f28b",
+              "metadata": {
+                "session_id": "stability-1",
+                "source": "user_transcript",
+                "observed_at": "2026-10-22T12:01:00.950534+08:00"
+              },
+              "score": 0.5289007937297494,
+              "created_at": "2026-10-22T04:01:02.171013+00:00",
+              "updated_at": "2026-10-22T04:01:02.171013+00:00",
+              "user_id": "default",
+              "attributed_to": "user"
+            }
+          ],
+          "answer": "根据我记得的记录，你住在苏州。今天过得怎么样，有没有什么想放一放的？",
+          "passed": true,
+          "seconds": 1.099832122999942,
+          "metrics": {
+            "requests": 1,
+            "usage": [
+              {
+                "input": 1566,
+                "output": 83,
+                "cached": 640
+              }
+            ],
+            "decisions": [
+              {
+                "kind": "chat",
+                "reply": "根据我记得的记录，你住在苏州。今天过得怎么样，有没有什么想放一放的？",
+                "actions": []
+              }
+            ]
+          }
+        },
+        {
+          "case": "abstention",
+          "question": "我的生日是几月几号？",
+          "retrieved": [],
+          "answer": "我这边没有你的生日记录呢。你方便告诉我是几月几号吗？",
+          "passed": false,
+          "seconds": 2.543342635999579,
+          "metrics": {
+            "requests": 2,
+            "usage": [
+              {
+                "input": 1463,
+                "output": 76,
+                "cached": 512
+              },
+              {
+                "input": 1528,
+                "output": 82,
+                "cached": 1280
+              }
+            ],
+            "decisions": [
+              {
+                "kind": "actions",
+                "reply": "",
+                "actions": [
+                  {
+                    "operation": "search",
+                    "query": "生日",
+                    "memory_id": "",
+                    "text": "",
+                    "key": "",
+                    "value": "",
+                    "due_date": ""
+                  }
+                ]
+              },
+              {
+                "kind": "chat",
+                "reply": "我这边没有你的生日记录呢。你方便告诉我是几月几号吗？",
+                "actions": []
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

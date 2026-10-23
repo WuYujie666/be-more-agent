@@ -1,0 +1,218 @@
+[
+  {
+    "case": "plain",
+    "input": [
+      {
+        "role": "user",
+        "content": "我明天要考试",
+        "observed_at": "2026-10-22T12:00:00+08:00"
+      }
+    ],
+    "changes": {
+      "changes": [
+        {
+          "operation": "upsert",
+          "memory_id": null,
+          "text": "考试",
+          "due_date": "2026-10-23",
+          "evidence": [
+            0
+          ]
+        }
+      ]
+    },
+    "records": [
+      {
+        "id": "a98f3d5b-fb33-44aa-abdc-ddb3fa4ea272",
+        "memory": "考试",
+        "hash": "7746fb87c60704a26000455bef0c736b",
+        "metadata": {
+          "kind": "plan",
+          "key": "考试:2026-10-23",
+          "value": "2026-10-23",
+          "status": "active",
+          "asked": false,
+          "source": "session_plan",
+          "session_id": "plain",
+          "observed_at": "2026-10-22T12:00:00+08:00"
+        },
+        "created_at": "2026-10-22T04:48:14.099185+00:00",
+        "updated_at": "2026-10-22T04:48:14.099185+00:00",
+        "user_id": "default",
+        "role": "user"
+      }
+    ],
+    "passed": true
+  },
+  {
+    "case": "plain_repeat",
+    "input": [
+      {
+        "role": "user",
+        "content": "我明天要考试",
+        "observed_at": "2026-10-22T12:00:00+08:00"
+      }
+    ],
+    "changes": {
+      "changes": [
+        {
+          "operation": "upsert",
+          "memory_id": null,
+          "text": "考试",
+          "due_date": "2026-10-23",
+          "evidence": [
+            0
+          ]
+        }
+      ]
+    },
+    "records": [
+      {
+        "id": "b218eeb4-30f7-41f6-a373-8b813bb9d9c3",
+        "memory": "考试",
+        "hash": "7746fb87c60704a26000455bef0c736b",
+        "metadata": {
+          "kind": "plan",
+          "key": "考试:2026-10-23",
+          "value": "2026-10-23",
+          "status": "active",
+          "asked": false,
+          "source": "session_plan",
+          "session_id": "plain_repeat",
+          "observed_at": "2026-10-22T12:00:00+08:00"
+        },
+        "created_at": "2026-10-22T04:48:14.737136+00:00",
+        "updated_at": "2026-10-22T04:48:14.737136+00:00",
+        "user_id": "default",
+        "role": "user"
+      }
+    ],
+    "passed": true
+  },
+  {
+    "case": "emotion",
+    "input": [
+      {
+        "role": "user",
+        "content": "明天有一场考试，有点紧张。",
+        "observed_at": "2026-10-22T12:00:00+08:00"
+      }
+    ],
+    "changes": {
+      "changes": [
+        {
+          "operation": "upsert",
+          "memory_id": null,
+          "text": "考试",
+          "due_date": "2026-10-23",
+          "evidence": [
+            0
+          ]
+        }
+      ]
+    },
+    "records": [
+      {
+        "id": "bac01b51-abe8-462a-97de-1acb1b1b15f6",
+        "memory": "考试",
+        "hash": "7746fb87c60704a26000455bef0c736b",
+        "metadata": {
+          "kind": "plan",
+          "key": "考试:2026-10-23",
+          "value": "2026-10-23",
+          "status": "active",
+          "asked": false,
+          "source": "session_plan",
+          "session_id": "emotion",
+          "observed_at": "2026-10-22T12:00:00+08:00"
+        },
+        "created_at": "2026-10-22T04:48:15.711908+00:00",
+        "updated_at": "2026-10-22T04:48:15.711908+00:00",
+        "user_id": "default",
+        "role": "user"
+      }
+    ],
+    "passed": true
+  },
+  {
+    "case": "hypothetical",
+    "input": [
+      {
+        "role": "user",
+        "content": "如果明天考试，我可能会紧张。",
+        "observed_at": "2026-10-22T12:00:00+08:00"
+      }
+    ],
+    "changes": {
+      "changes": []
+    },
+    "records": [],
+    "passed": true
+  },
+  {
+    "case": "negative",
+    "input": [
+      {
+        "role": "user",
+        "content": "我明天没有考试。",
+        "observed_at": "2026-10-22T12:00:00+08:00"
+      }
+    ],
+    "changes": {
+      "changes": []
+    },
+    "records": [],
+    "passed": true
+  },
+  {
+    "case": "reschedule",
+    "input": [
+      {
+        "role": "user",
+        "content": "我明天要考试",
+        "observed_at": "2026-10-22T12:00:00+08:00"
+      },
+      {
+        "role": "user",
+        "content": "考试改到后天了",
+        "observed_at": "2026-10-22T12:00:00+08:00"
+      }
+    ],
+    "changes": {
+      "changes": [
+        {
+          "operation": "upsert",
+          "memory_id": null,
+          "text": "考试",
+          "due_date": "2026-10-24",
+          "evidence": [
+            0,
+            1
+          ]
+        }
+      ]
+    },
+    "records": [
+      {
+        "id": "c1a82263-8aa2-45cc-b368-9dc3e2cc3219",
+        "memory": "考试",
+        "hash": "7746fb87c60704a26000455bef0c736b",
+        "metadata": {
+          "kind": "plan",
+          "key": "考试:2026-10-24",
+          "value": "2026-10-24",
+          "status": "active",
+          "asked": false,
+          "source": "session_plan",
+          "session_id": "reschedule",
+          "observed_at": "2026-10-22T12:00:00+08:00"
+        },
+        "created_at": "2026-10-22T04:48:17.735271+00:00",
+        "updated_at": "2026-10-22T04:48:17.735271+00:00",
+        "user_id": "default",
+        "role": "user"
+      }
+    ],
+    "passed": true
+  }
+]

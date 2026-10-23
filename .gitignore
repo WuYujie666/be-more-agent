@@ -56,3 +56,6 @@ cache/huggingface/
 
 # Public benchmark downloads (pinned by experiment script)
 cache/locomo-zh/
+
+# Local VAD audio and transcripts
+diagnostics/vad/
